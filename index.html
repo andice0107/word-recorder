@@ -153,6 +153,10 @@ details[open]>summary::before{content:'▾ '}
 .dupAct button{text-align:left;padding:10px 14px}
 @media(max-width:560px){.dupCols{grid-template-columns:1fr}}
 main>.card{min-width:0}
+#wordEdit::placeholder{font-size:18px;letter-spacing:0}
+.optFull{margin:0 0 4px;min-height:1.2em}
+.exportGrid select{text-overflow:ellipsis}
+@media (max-width:860px){.exportGrid{grid-template-columns:minmax(0,1fr)!important}.exportGrid>span:empty{display:none}.exportGrid>span{font-weight:700;margin-top:4px}}
 input,select,textarea{min-width:0;max-width:100%}
 .row>label{white-space:normal}
 .row>label input[type=text]{min-width:0}
@@ -192,8 +196,8 @@ input,select,textarea{min-width:0;max-width:100%}
 拍拍手
 也可以自己寫注音：長大 ㄓㄤˇ ㄉㄚˋ"></textarea>
     <div class="row" style="margin-top:8px">
-      <label>分組（可不填）<input type="text" id="groupIn" placeholder="例如：第1課" style="width:10em"></label>
-      <label>要教的注音符號（可不填）<input type="text" id="targetIn0" style="width:5em" placeholder="例如ㄆ"></label>
+      <label>分組（可不填）<input type="text" id="groupIn" placeholder="如：第1課" style="width:10em"></label>
+      <label>要教的注音符號（可不填）<input type="text" id="targetIn0" style="width:5em" placeholder="如ㄆ"></label>
       <button class="primary" id="addBtn">＋ 加入清單</button>
     </div>
     <p class="hint">系統會自動標上注音。電腦標的注音偶爾會錯（特別是破音字），請在錄音時看一下，不對可以直接改。</p>
@@ -210,7 +214,7 @@ input,select,textarea{min-width:0;max-width:100%}
     <details id="editSec"><summary>✎ 修改注音／要教的注音符號</summary>
     <div class="row" style="justify-content:center;margin:4px 0"><label>這個語詞要教的注音符號<input type="text" id="targetEdit" style="width:5.5em;text-align:center" placeholder="自動"></label><span id="targetChips" class="choices" style="margin:0"></span></div>
     <div class="row" style="justify-content:center">
-      <label style="flex:1;max-width:420px">注音<input type="text" id="zyEdit" placeholder="這裡可以修改注音"></label>
+      <label style="flex:1;max-width:420px">注音<input type="text" id="zyEdit" placeholder="可修改注音"></label>
     </div></details>
     <button id="recBtn"><span class="big">●</span><span id="recLabel">按我開始錄音</span></button>
     <canvas id="meter" width="600" height="16"></canvas>
@@ -235,8 +239,9 @@ input,select,textarea{min-width:0;max-width:100%}
 
   <section class="card" id="listCard">
     <h2><span class="step">3</span>音檔清單（資料夾裡的檔案）</h2>
-    <div class="row" style="margin-bottom:6px"><input type="text" id="searchIn" placeholder="🔍 搜尋：語詞，或打注音符號（例如 ㄔ，語詞裡任何一個字有ㄔ都找得到）" style="flex:1;min-width:12em" autocomplete="off"><button id="searchClr">✕</button></div>
+    <div class="row" style="margin-bottom:6px"><input type="text" id="searchIn" placeholder="🔍 搜尋語詞或注音（如 ㄔ）" title="可打語詞，或打注音符號（例如 ㄔ，語詞裡任何一個字有ㄔ都找得到）" style="flex:1;min-width:12em" autocomplete="off"><button id="searchClr">✕</button></div>
     <div class="row" style="margin-bottom:6px"><button id="scanBtn" class="blue">🔄 重新掃描資料夾</button><button id="expAll">全部展開</button><button id="colAll">全部收合</button><button id="logBtn">📜 日誌</button></div>
+    <div class="hint" style="margin:0 0 6px">可打語詞，或打注音符號（例如 ㄔ），語詞裡任何一個字有ㄔ都找得到。</div>
     <div id="scanInfo" class="hint"></div>
     <div class="tabs" id="filterTabs">
       <button data-f="all" class="on">全部</button>
@@ -257,28 +262,30 @@ input,select,textarea{min-width:0;max-width:100%}
         <button id="syncBtn">📤 把瀏覽器裡還沒存的錄音存進資料夾</button>
         <label><input type="checkbox" id="optAutoSave" checked> 錄好（確認語詞後）自動存進去</label>
       </div>
-      <div class="row" style="margin-top:6px"><label style="flex:1">資料夾完整路徑（選填）<input type="text" id="rootPath" placeholder="例如 D:\語詞音檔　或　/Users/老師/語詞音檔" style="min-width:0"></label></div>
+      <div class="row" style="margin-top:6px"><label style="flex:1">資料夾完整路徑（選填；Mac 例 /Users/老師/語詞音檔）<input type="text" id="rootPath" placeholder="D:\語詞" title="Windows 例：D:\語詞音檔；Mac 例：/Users/老師/語詞音檔" style="min-width:0"></label></div>
       <p class="hint" style="margin-bottom:0">選好一次，之後每次打開工具都會掃描這個資料夾裡的音檔；錄好並按「確認」才會依下面的分法放進子資料夾。完整路徑只是讓清單的 📋 可以複製出完整位置（網頁無法自己打開檔案總管）。</p>
     </div>
     <div class="exportGrid">
       <span>資料夾分法</span>
       <select id="optFolder">
-        <option value="target">依「要教的注音符號」（沒填就用第一個字的聲符）</option>
-        <option value="initial">依第一個字的聲符（ㄅ、ㄆ、ㄇ…）</option>
-        <option value="final">依第一個字的韻符（ㄚ、ㄧㄥ、ㄨㄛ…）</option>
-        <option value="two">先分聲符，裡面再分韻符（兩層）</option>
-        <option value="syllable">依第一個字的注音（ㄆㄧㄥ…，不分聲調）</option>
-        <option value="syllableTone">依第一個字的注音（含聲調）</option>
-        <option value="tone">依第一個字的聲調（一聲、二聲…）</option>
-        <option value="count">依字數（2個字、3個字…）</option>
-        <option value="none">不分資料夾</option>
+        <option value="target" data-full="依「要教的注音符號」；沒填就用第一個字的聲符">依「要教的符號」</option>
+        <option value="initial" data-full="依第一個字的聲符（ㄅ、ㄆ、ㄇ…）">依首字聲符</option>
+        <option value="final" data-full="依第一個字的韻符（ㄚ、ㄧㄥ、ㄨㄛ…）">依首字韻符</option>
+        <option value="two" data-full="先分聲符，裡面再分韻符（兩層）">聲符＋韻符（兩層）</option>
+        <option value="syllable" data-full="依第一個字的注音（ㄆㄧㄥ…，不分聲調）">依首字注音</option>
+        <option value="syllableTone" data-full="依第一個字的注音（含聲調）">依首字注音＋聲調</option>
+        <option value="tone" data-full="依第一個字的聲調（一聲、二聲…）">依首字聲調</option>
+        <option value="count" data-full="依字數（2個字、3個字…）">依字數</option>
+        <option value="none" data-full="全部放在同一層，不分資料夾">不分資料夾</option>
       </select>
+      <span></span><div class="hint optFull" id="folderFull"></div>
       <span>檔案名稱</span>
       <select id="optName">
-        <option value="word">語詞.wav（例如：蘋果.wav）</option>
-        <option value="wordzy">語詞＋注音（例如：蘋果_ㄆㄧㄥˊ ㄍㄨㄛˇ.wav）</option>
-        <option value="zy">注音.wav（例如：ㄆㄧㄥˊ ㄍㄨㄛˇ.wav）</option>
+        <option value="word" data-full="語詞.wav（例如：蘋果.wav）">語詞.wav</option>
+        <option value="wordzy" data-full="語詞＋注音（例如：蘋果_ㄆㄧㄥˊ ㄍㄨㄛˇ.wav）">語詞＋注音</option>
+        <option value="zy" data-full="注音.wav（例如：ㄆㄧㄥˊ ㄍㄨㄛˇ.wav）">注音.wav</option>
       </select>
+      <span></span><div class="hint optFull" id="nameFull"></div>
       <span></span>
       <label><input type="checkbox" id="optGroup"> 最外層先依「分組」分資料夾（例如：第1課）</label>
     </div>
@@ -398,7 +405,7 @@ input,select,textarea{min-width:0;max-width:100%}
     <div class="exportGrid">
       <span>語詞（檔名）</span><input type="text" id="inWord">
       <span>注音</span><input type="text" id="inZy">
-      <span>要教的注音符號<br><small>（決定放哪個資料夾）</small></span><input type="text" id="inTarget" placeholder="例如 ㄆ；留空＝用第一個字的聲符">
+      <span>要教的注音符號<br><small>（決定放哪個資料夾）</small></span><input type="text" id="inTarget" placeholder="如 ㄆ（留空用首字聲符）">
     </div>
     <p class="hint" id="inPath"></p>
     <p class="hint"><b>儲存</b>＝改名；如果「要教的注音符號」改了，檔案也會搬到新的資料夾（舊位置的檔案會消失）。<br><b>另存一份</b>＝複製到新的名字／資料夾，原本的檔案保留。</p>
@@ -602,13 +609,13 @@ function renderCur(){
   const ch=$('choices'); ch.innerHTML=''; const cb=$('confirmBox'); cb.innerHTML=''; cb.style.display='none'; $('targetChips').innerHTML='';
   $('recBtn').disabled=false; $('nextBtn').textContent='下一個 ⏭';
   if(!it){
-    $('wordEdit').value=''; $('wordEdit').disabled=true; $('wordEdit').placeholder='按下面的紅鈕就能直接錄音，錄完自動辨識語詞';
+    $('wordEdit').value=''; $('wordEdit').disabled=true; $('wordEdit').placeholder='按紅鈕錄音，自動辨識';
     $('curZy').textContent=''; $('zyEdit').value=''; $('zyEdit').disabled=true; $('targetEdit').value=''; $('targetEdit').disabled=true;
     $('curInfo').textContent= items.length?'請在右邊清單點一個語詞，或直接按紅鈕錄新的':'請先在 ① 輸入語詞，或直接按紅鈕錄音（錄完自動辨識）';
     $('playBtn').disabled=true; $('editBtn').disabled=true; return;
   }
   $('wordEdit').disabled=false; $('zyEdit').disabled=false; $('targetEdit').disabled=false;
-  $('wordEdit').placeholder='錄完會自動辨識，也可以直接在這裡打字';
+  $('wordEdit').placeholder='自動辨識，或在這打字';
   const seq=seqList(); const idx=seq.indexOf(it);
   const st=it.pend?(hasRec(it)?'🔁 重錄中（還沒覆蓋舊檔）':'🆕 新錄音（還沒存）'):(hasRec(it)?'✔ 已存'+(it.savedPath?'：'+it.savedPath:'')+(it.dur?`（${it.dur.toFixed(1)} 秒）`:''):'還沒錄');
   $('curInfo').textContent=`第 ${idx+1} 個，共 ${seq.length} 個`+(it.group?`　｜　${it.group}`:'')+`　｜　${st}`;
@@ -1671,6 +1678,10 @@ $('helpBtn').onclick=()=>$('helpDlg').showModal();
   if(!items.length && !dirHandle && !kvGet('seenHelp',false)){ kvSet('seenHelp',true); $('helpDlg').showModal(); }
   window.addEventListener('beforeunload',e=>{ if(recording||items.some(x=>x.pend)){ e.preventDefault(); e.returnValue=''; } });
 })();
+
+(function(){function upd(){[['optFolder','folderFull'],['optName','nameFull']].forEach(function(p){var sel=document.getElementById(p[0]),h=document.getElementById(p[1]);if(!sel||!h)return;var o=sel.options[sel.selectedIndex];h.textContent=o?(o.getAttribute('data-full')||''):'';});}
+['optFolder','optName'].forEach(function(id){var e=document.getElementById(id);if(e)e.addEventListener('change',upd);});
+setTimeout(upd,0);setTimeout(upd,800);})();
 </script>
 </body>
 </html>
