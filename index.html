@@ -278,8 +278,8 @@ input[type=range]{width:220px;max-width:55vw}
     <div id="edInfo" class="hint"></div>
     <div class="row">
       <button id="edPlay" class="blue">▶ 播放</button><button id="edStop">■ 停止</button>
-      <button id="edAll">全選</button><button id="edNone">取消選取</button>
-      <span class="hint" style="margin:0">用滑鼠（或手指）在波形上拖曳，就可以選一段。沒有選取時，下面的功能會套用在整段。</span>
+      <button id="edMarkA">［ 設為起點</button><button id="edMarkB">設為終點 ］</button><button id="edAll">全選</button><button id="edNone">取消選取</button>
+      <span class="hint" style="margin:0">播放時橘色線會跑動，顯示唸到哪裡。在想剪的地方按「設為起點／終點」，或在波形上拖曳選一段；點一下波形可換播放位置。沒有選取時，下面的功能會套用在整段。</span>
     </div>
     <div class="edGroup"><h3>✂️ 修剪</h3><div class="row">
       <button id="edCrop">只保留選取的</button><button id="edCut">刪除選取的</button><button id="edTrim">自動剪掉前後空白</button></div></div>
@@ -973,7 +973,7 @@ function wsola(x,s){
 }
 function edRange(){ const n=ED.buf.length; if(ED.sel && ED.sel.b-ED.sel.a>=Math.floor(ED.rate*0.01)) return {a:ED.sel.a,b:ED.sel.b,part:true}; return {a:0,b:n,part:false}; }
 function edPush(){ ED.undo.push(ED.buf); if(ED.undo.length>25) ED.undo.shift(); }
-function edSet(nb,keepSel){ ED.buf=nb; if(!keepSel) ED.sel=null; edStop(); edDraw(); }
+function edSet(nb,keepSel){ ED.buf=nb; if(!keepSel) ED.sel=null; ED.cursor=null; edStop(); ED.cursor=null; edDraw(); }
 function edReplace(r,seg){ const n=new Float32Array(r.a+seg.length+(ED.buf.length-r.b)); n.set(ED.buf.subarray(0,r.a),0); n.set(seg,r.a); n.set(ED.buf.subarray(r.b),r.a+seg.length); return n; }
 function edDraw(){
   const c=$('edWave'), dpr=window.devicePixelRatio||1; const W=c.clientWidth||800, H=170; c.width=Math.round(W*dpr); c.height=Math.round(H*dpr);
@@ -983,7 +983,9 @@ function edDraw(){
   g.fillStyle='#3a78c2';
   for(let px=0;px<W;px++){ const a=Math.floor(px/W*n), b=Math.max(a+1,Math.floor((px+1)/W*n)); let mn=0,mx=0; for(let i=a;i<b;i+=Math.max(1,(b-a)>>6)){ const v=x[i]; if(v<mn)mn=v; if(v>mx)mx=v; } g.fillRect(px,H/2-mx*H/2*0.95,1,Math.max(1,(mx-mn)*H/2*0.95)); }
   if(ED.sel){ const a=ED.sel.a/n*W, b=ED.sel.b/n*W; g.fillStyle='rgba(217,83,79,.22)'; g.fillRect(a,0,b-a,H); g.fillStyle='#d9534f'; g.fillRect(a,0,2,H); g.fillRect(b-2,0,2,H); }
-  const sec=n/ED.rate; $('edInfo').textContent=`長度 ${sec.toFixed(2)} 秒`+(ED.sel&&ED.sel.b-ED.sel.a>0?`　｜　選取 ${(ED.sel.a/ED.rate).toFixed(2)} ～ ${(ED.sel.b/ED.rate).toFixed(2)} 秒（${((ED.sel.b-ED.sel.a)/ED.rate).toFixed(2)} 秒）`:'　｜　沒有選取（功能會套用在整段）');
+  if(ED.cursor!=null && ED.pos==null){ const cx=ED.cursor/n*W; g.fillStyle='#2d2a26'; g.fillRect(cx-1,0,2,H); }
+  if(ED.pos!=null){ const px=ED.pos/n*W; g.fillStyle='#e07b00'; g.fillRect(px-1.5,0,3,H); g.beginPath(); g.moveTo(px-7,0); g.lineTo(px+7,0); g.lineTo(px,10); g.fill(); }
+  const sec=n/ED.rate; const curS=ED.pos!=null?ED.pos:ED.cursor; $('edInfo').textContent=(curS!=null?`目前位置 ${(curS/ED.rate).toFixed(2)} 秒　｜　`:'')+`長度 ${sec.toFixed(2)} 秒`+(ED.sel&&ED.sel.b-ED.sel.a>0?`　｜　選取 ${(ED.sel.a/ED.rate).toFixed(2)} ～ ${(ED.sel.b/ED.rate).toFixed(2)} 秒（${((ED.sel.b-ED.sel.a)/ED.rate).toFixed(2)} 秒）`:'　｜　沒有選取（功能會套用在整段）');
   edSpdLabel(); $('edUndo').disabled=!ED.undo.length;
 }
 function edSpdLabel(){ const s=$('edSpd').value/100; $('edSpdV').textContent=$('edSpd').value+'%'; const r=ED.buf?edRange():{a:0,b:0}; $('edSpdD').textContent=ED.buf?`　${((r.b-r.a)/ED.rate).toFixed(2)} 秒 → ${((r.b-r.a)/ED.rate/s).toFixed(2)} 秒`:''; }
@@ -996,25 +998,40 @@ async function openEdit(it){
   if(!it||!it.audio||recording) return;
   try{ const d=await decodeToMono(it.audio); ED.it=it; ED.buf=d.pcm; ED.rate=d.rate; }
   catch(e){ toast('這個音檔無法編輯：'+(e.message||e)); return; }
-  ED.undo=[]; ED.sel=null; ED.noise=null; $('edNzHint').textContent='預設自動找最安靜的地方當雜音樣本。';
+  ED.undo=[]; ED.sel=null; ED.cursor=null; ED.pos=null; ED.noise=null; $('edNzHint').textContent='預設自動找最安靜的地方當雜音樣本。';
   $('edTitle').textContent=(it.word||it.zy||'')+(it.zy&&it.word?'　'+it.zy:''); $('edGain').value=100; $('edGainV').textContent='100%'; $('edSpd').value=100;
   $('edOrig').disabled=!it.orig; $('editDlg').showModal(); edDraw();
 }
 function edPlay(){
   edStop(); if(!actx){ const AC=window.AudioContext||window.webkitAudioContext; actx=new AC(); } if(actx.state==='suspended') actx.resume();
   const ab=actx.createBuffer(1,ED.buf.length,ED.rate); ab.copyToChannel(ED.buf,0); const src=actx.createBufferSource(); src.buffer=ab; src.connect(actx.destination);
-  const r=ED.sel&&ED.sel.b-ED.sel.a>100?{a:ED.sel.a,b:ED.sel.b}:{a:0,b:ED.buf.length}; src.start(0,r.a/ED.rate,(r.b-r.a)/ED.rate); ED.src=src;
+  let r;
+  if(ED.sel&&ED.sel.b-ED.sel.a>100) r={a:ED.sel.a,b:ED.sel.b};
+  else r={a:(ED.cursor!=null&&ED.cursor<ED.buf.length-100)?ED.cursor:0,b:ED.buf.length};
+  const t0=actx.currentTime; src.start(0,r.a/ED.rate,(r.b-r.a)/ED.rate); ED.src=src; ED.pos=r.a;
+  const my=src; src.onended=()=>{ if(ED.src===my){ ED.src=null; ED.pos=null; cancelAnimationFrame(ED.raf); edDraw(); } };
+  const loop=()=>{ if(ED.src!==my) return; ED.pos=Math.min(r.b,r.a+(actx.currentTime-t0)*ED.rate); edDraw(); ED.raf=requestAnimationFrame(loop); };
+  ED.raf=requestAnimationFrame(loop);
 }
-function edStop(){ if(ED.src){ try{ ED.src.stop(); }catch(e){} ED.src=null; } }
+function edStop(){ cancelAnimationFrame(ED.raf); if(ED.src){ const s=ED.src; ED.src=null; try{ s.stop(); }catch(e){} } if(ED.pos!=null){ ED.cursor=Math.round(ED.pos); ED.pos=null; if(ED.buf&&$('editDlg').open) edDraw(); } }
+function edMark(which){
+  const pos=ED.pos!=null?Math.round(ED.pos):(ED.cursor!=null?ED.cursor:null);
+  if(pos==null){ toast('請先按播放，在想要的位置按「設為起點／終點」；或先在波形上點一下'); return; }
+  const n=ED.buf.length; let a=ED.sel?ED.sel.a:0, b=ED.sel?ED.sel.b:n;
+  if(which==='a'){ a=pos; if(b<=a) b=n; } else { b=pos; if(a>=b) a=0; }
+  ED.sel={a,b}; edDraw();
+}
 (function(){
   const c=$('edWave'); let drag=null;
   const idx=e=>{ const r=c.getBoundingClientRect(); return Math.max(0,Math.min(ED.buf.length,Math.round((e.clientX-r.left)/r.width*ED.buf.length))); };
   c.addEventListener('pointerdown',e=>{ if(!ED.buf) return; c.setPointerCapture(e.pointerId); drag={x:e.clientX,a:idx(e)}; ED.sel={a:drag.a,b:drag.a}; });
   c.addEventListener('pointermove',e=>{ if(!drag) return; const i=idx(e); ED.sel={a:Math.min(drag.a,i),b:Math.max(drag.a,i)}; edDraw(); });
-  c.addEventListener('pointerup',e=>{ if(!drag) return; if(Math.abs(e.clientX-drag.x)<4) ED.sel=null; drag=null; edDraw(); });
+  c.addEventListener('pointerup',e=>{ if(!drag) return; const wasPlaying=!!ED.src;
+    if(Math.abs(e.clientX-drag.x)<4){ ED.sel=null; ED.cursor=drag.a; ED.pos=null; drag=null; if(wasPlaying) edPlay(); else edDraw(); return; }
+    drag=null; edDraw(); });
   $('edGain').oninput=()=>{ $('edGainV').textContent=$('edGain').value+'%'; };
   $('edSpd').oninput=edSpdLabel;
-  $('edPlay').onclick=edPlay; $('edStop').onclick=edStop;
+  $('edPlay').onclick=edPlay; $('edStop').onclick=edStop; $('edMarkA').onclick=()=>edMark('a'); $('edMarkB').onclick=()=>edMark('b');
   $('edAll').onclick=()=>{ ED.sel={a:0,b:ED.buf.length}; edDraw(); }; $('edNone').onclick=()=>{ ED.sel=null; edDraw(); };
   $('edCrop').onclick=()=>{ if(!ED.sel||ED.sel.b-ED.sel.a<100){ toast('請先在波形上拖曳選一段'); return; } edPush(); edSet(ED.buf.slice(ED.sel.a,ED.sel.b)); };
   $('edCut').onclick=()=>{ if(!ED.sel||ED.sel.b-ED.sel.a<100){ toast('請先在波形上拖曳選一段'); return; } edPush(); edSet(edReplace({a:ED.sel.a,b:ED.sel.b},new Float32Array(0))); };
