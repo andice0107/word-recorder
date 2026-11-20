@@ -973,7 +973,7 @@ function wsola(x,s){
 }
 function edRange(){ const n=ED.buf.length; if(ED.sel && ED.sel.b-ED.sel.a>=Math.floor(ED.rate*0.01)) return {a:ED.sel.a,b:ED.sel.b,part:true}; return {a:0,b:n,part:false}; }
 function edPush(){ ED.undo.push(ED.buf); if(ED.undo.length>25) ED.undo.shift(); }
-function edSet(nb,keepSel){ ED.buf=nb; if(!keepSel) ED.sel=null; ED.cursor=null; edStop(); ED.cursor=null; edDraw(); }
+function edSet(nb,keepSel){ ED.buf=nb; if(!keepSel){ ED.sel=null; ED.mA=ED.mB=null; } ED.cursor=null; edStop(); ED.cursor=null; edDraw(); }
 function edReplace(r,seg){ const n=new Float32Array(r.a+seg.length+(ED.buf.length-r.b)); n.set(ED.buf.subarray(0,r.a),0); n.set(seg,r.a); n.set(ED.buf.subarray(r.b),r.a+seg.length); return n; }
 function edDraw(){
   const c=$('edWave'), dpr=window.devicePixelRatio||1; const W=c.clientWidth||800, H=170; c.width=Math.round(W*dpr); c.height=Math.round(H*dpr);
@@ -982,10 +982,12 @@ function edDraw(){
   g.fillStyle='#e8dfd2'; g.fillRect(0,H/2,W,1);
   g.fillStyle='#3a78c2';
   for(let px=0;px<W;px++){ const a=Math.floor(px/W*n), b=Math.max(a+1,Math.floor((px+1)/W*n)); let mn=0,mx=0; for(let i=a;i<b;i+=Math.max(1,(b-a)>>6)){ const v=x[i]; if(v<mn)mn=v; if(v>mx)mx=v; } g.fillRect(px,H/2-mx*H/2*0.95,1,Math.max(1,(mx-mn)*H/2*0.95)); }
-  if(ED.sel){ const a=ED.sel.a/n*W, b=ED.sel.b/n*W; g.fillStyle='rgba(217,83,79,.22)'; g.fillRect(a,0,b-a,H); g.fillStyle='#d9534f'; g.fillRect(a,0,2,H); g.fillRect(b-2,0,2,H); }
+  if(ED.mA!=null){ g.fillStyle='#2e9b57'; const x=ED.mA/n*W; g.fillRect(x,0,3,H); g.fillRect(x,0,10,5); }
+  if(ED.mB!=null){ g.fillStyle='#d9534f'; const x=ED.mB/n*W; g.fillRect(x-3,0,3,H); g.fillRect(x-10,0,10,5); }
+  if(ED.sel){ const a=ED.sel.a/n*W, b=ED.sel.b/n*W; g.fillStyle='rgba(217,83,79,.22)'; g.fillRect(a,0,b-a,H); }
   if(ED.cursor!=null && ED.pos==null){ const cx=ED.cursor/n*W; g.fillStyle='#2d2a26'; g.fillRect(cx-1,0,2,H); }
   if(ED.pos!=null){ const px=ED.pos/n*W; g.fillStyle='#e07b00'; g.fillRect(px-1.5,0,3,H); g.beginPath(); g.moveTo(px-7,0); g.lineTo(px+7,0); g.lineTo(px,10); g.fill(); }
-  const sec=n/ED.rate; const curS=ED.pos!=null?ED.pos:ED.cursor; $('edInfo').textContent=(curS!=null?`目前位置 ${(curS/ED.rate).toFixed(2)} 秒　｜　`:'')+`長度 ${sec.toFixed(2)} 秒`+(ED.sel&&ED.sel.b-ED.sel.a>0?`　｜　選取 ${(ED.sel.a/ED.rate).toFixed(2)} ～ ${(ED.sel.b/ED.rate).toFixed(2)} 秒（${((ED.sel.b-ED.sel.a)/ED.rate).toFixed(2)} 秒）`:'　｜　沒有選取（功能會套用在整段）');
+  const sec=n/ED.rate; const curS=ED.pos!=null?ED.pos:ED.cursor; $('edInfo').textContent=(curS!=null?`目前位置 ${(curS/ED.rate).toFixed(2)} 秒　｜　`:'')+`長度 ${sec.toFixed(2)} 秒`+(ED.sel&&ED.sel.b-ED.sel.a>0?`　｜　選取 ${(ED.sel.a/ED.rate).toFixed(2)} ～ ${(ED.sel.b/ED.rate).toFixed(2)} 秒（${((ED.sel.b-ED.sel.a)/ED.rate).toFixed(2)} 秒）`:'　｜　'+((ED.mA!=null?`起點 ${(ED.mA/ED.rate).toFixed(2)} 秒（還沒設終點）　`:'')+(ED.mB!=null?`終點 ${(ED.mB/ED.rate).toFixed(2)} 秒（還沒設起點）　`:'')||'沒有選取（功能會套用在整段）'));
   edSpdLabel(); $('edUndo').disabled=!ED.undo.length;
 }
 function edSpdLabel(){ const s=$('edSpd').value/100; $('edSpdV').textContent=$('edSpd').value+'%'; const r=ED.buf?edRange():{a:0,b:0}; $('edSpdD').textContent=ED.buf?`　${((r.b-r.a)/ED.rate).toFixed(2)} 秒 → ${((r.b-r.a)/ED.rate/s).toFixed(2)} 秒`:''; }
@@ -998,7 +1000,7 @@ async function openEdit(it){
   if(!it||!it.audio||recording) return;
   try{ const d=await decodeToMono(it.audio); ED.it=it; ED.buf=d.pcm; ED.rate=d.rate; }
   catch(e){ toast('這個音檔無法編輯：'+(e.message||e)); return; }
-  ED.undo=[]; ED.sel=null; ED.cursor=null; ED.pos=null; ED.noise=null; $('edNzHint').textContent='預設自動找最安靜的地方當雜音樣本。';
+  ED.undo=[]; ED.sel=null; ED.mA=ED.mB=null; ED.cursor=null; ED.pos=null; ED.noise=null; $('edNzHint').textContent='預設自動找最安靜的地方當雜音樣本。';
   $('edTitle').textContent=(it.word||it.zy||'')+(it.zy&&it.word?'　'+it.zy:''); $('edGain').value=100; $('edGainV').textContent='100%'; $('edSpd').value=100;
   $('edOrig').disabled=!it.orig; $('editDlg').showModal(); edDraw();
 }
@@ -1014,25 +1016,27 @@ function edPlay(){
   ED.raf=requestAnimationFrame(loop);
 }
 function edStop(){ cancelAnimationFrame(ED.raf); if(ED.src){ const s=ED.src; ED.src=null; try{ s.stop(); }catch(e){} } if(ED.pos!=null){ ED.cursor=Math.round(ED.pos); ED.pos=null; if(ED.buf&&$('editDlg').open) edDraw(); } }
+function edMarkSync(){ ED.sel=(ED.mA!=null&&ED.mB!=null&&ED.mB>ED.mA)?{a:ED.mA,b:ED.mB}:null; }
 function edMark(which){
   const pos=ED.pos!=null?Math.round(ED.pos):(ED.cursor!=null?ED.cursor:null);
   if(pos==null){ toast('請先按播放，在想要的位置按「設為起點／終點」；或先在波形上點一下'); return; }
-  const n=ED.buf.length; let a=ED.sel?ED.sel.a:0, b=ED.sel?ED.sel.b:n;
-  if(which==='a'){ a=pos; if(b<=a) b=n; } else { b=pos; if(a>=b) a=0; }
-  ED.sel={a,b}; edDraw();
+  if(which==='a') ED.mA=pos; else ED.mB=pos;
+  edMarkSync();
+  if(ED.mA!=null&&ED.mB!=null&&ED.mB<=ED.mA) toast('終點在起點的前面，請重設其中一個');
+  edDraw();
 }
 (function(){
   const c=$('edWave'); let drag=null;
   const idx=e=>{ const r=c.getBoundingClientRect(); return Math.max(0,Math.min(ED.buf.length,Math.round((e.clientX-r.left)/r.width*ED.buf.length))); };
-  c.addEventListener('pointerdown',e=>{ if(!ED.buf) return; c.setPointerCapture(e.pointerId); drag={x:e.clientX,a:idx(e)}; ED.sel={a:drag.a,b:drag.a}; });
-  c.addEventListener('pointermove',e=>{ if(!drag) return; const i=idx(e); ED.sel={a:Math.min(drag.a,i),b:Math.max(drag.a,i)}; edDraw(); });
+  c.addEventListener('pointerdown',e=>{ if(!ED.buf) return; c.setPointerCapture(e.pointerId); drag={x:e.clientX,a:idx(e),moved:false}; });
+  c.addEventListener('pointermove',e=>{ if(!drag) return; if(!drag.moved&&Math.abs(e.clientX-drag.x)<4) return; drag.moved=true; const i=idx(e); ED.mA=Math.min(drag.a,i); ED.mB=Math.max(drag.a,i); edMarkSync(); edDraw(); });
   c.addEventListener('pointerup',e=>{ if(!drag) return; const wasPlaying=!!ED.src;
-    if(Math.abs(e.clientX-drag.x)<4){ ED.sel=null; ED.cursor=drag.a; ED.pos=null; drag=null; if(wasPlaying) edPlay(); else edDraw(); return; }
+    if(!drag.moved){ ED.cursor=drag.a; ED.pos=null; drag=null; if(wasPlaying) edPlay(); else edDraw(); return; }
     drag=null; edDraw(); });
   $('edGain').oninput=()=>{ $('edGainV').textContent=$('edGain').value+'%'; };
   $('edSpd').oninput=edSpdLabel;
   $('edPlay').onclick=edPlay; $('edStop').onclick=edStop; $('edMarkA').onclick=()=>edMark('a'); $('edMarkB').onclick=()=>edMark('b');
-  $('edAll').onclick=()=>{ ED.sel={a:0,b:ED.buf.length}; edDraw(); }; $('edNone').onclick=()=>{ ED.sel=null; edDraw(); };
+  $('edAll').onclick=()=>{ ED.mA=0; ED.mB=ED.buf.length; edMarkSync(); edDraw(); }; $('edNone').onclick=()=>{ ED.sel=null; ED.mA=ED.mB=null; edDraw(); };
   $('edCrop').onclick=()=>{ if(!ED.sel||ED.sel.b-ED.sel.a<100){ toast('請先在波形上拖曳選一段'); return; } edPush(); edSet(ED.buf.slice(ED.sel.a,ED.sel.b)); };
   $('edCut').onclick=()=>{ if(!ED.sel||ED.sel.b-ED.sel.a<100){ toast('請先在波形上拖曳選一段'); return; } edPush(); edSet(edReplace({a:ED.sel.a,b:ED.sel.b},new Float32Array(0))); };
   $('edTrim').onclick=()=>{ edPush(); edSet(trimSilence(ED.buf,ED.rate)); };
@@ -1041,7 +1045,7 @@ function edMark(which){
   const fade=(dirIn)=>{ const r=edRange(); edPush(); const seg=ED.buf.slice(r.a,r.b); const f=Math.min(seg.length,Math.floor(ED.rate*0.15)); for(let i=0;i<f;i++){ const k=i/f; if(dirIn) seg[i]*=k; else seg[seg.length-1-i]*=k; } edSet(edReplace(r,seg),true); };
   $('edFadeIn').onclick=()=>fade(true); $('edFadeOut').onclick=()=>fade(false);
   $('edLearn').onclick=()=>{ if(!ED.sel||ED.sel.b-ED.sel.a<ED.rate*0.05){ toast('請先選取一小段「只有雜音、沒有講話」的地方'); return; }
-    const p=learnProfile(ED.buf.slice(ED.sel.a,ED.sel.b)); if(!p){ toast('選取的太短，請多選一點（至少 0.1 秒）'); return; } ED.noise=p; ED.sel=null; edDraw(); $('edNzHint').textContent='✔ 已記住雜音樣本，按「去雜訊」就會用它。'; };
+    const p=learnProfile(ED.buf.slice(ED.sel.a,ED.sel.b)); if(!p){ toast('選取的太短，請多選一點（至少 0.1 秒）'); return; } ED.noise=p; ED.sel=null; ED.mA=ED.mB=null; edDraw(); $('edNzHint').textContent='✔ 已記住雜音樣本，按「去雜訊」就會用它。'; };
   $('edNz').onclick=()=>{ const r=edRange(); edPush(); $('edNz').disabled=true; $('edNz').textContent='處理中…';
     setTimeout(()=>{ try{ let seg=ED.buf.slice(r.a,r.b); if($('edHP').checked) seg=highpass(seg,ED.rate,80); seg=denoise(seg,+$('edNzLv').value,ED.noise); edSet(edReplace(r,seg),true); toast('已去雜訊，請播放聽聽看；太悶就改「弱」，還有雜音就改「強」',3500); }catch(e){ ED.undo.pop(); toast('去雜訊失敗：'+e.message); } $('edNz').disabled=false; $('edNz').textContent='去雜訊'; },30); };
   $('edSpdGo').onclick=()=>{ const s=$('edSpd').value/100; if(Math.abs(s-1)<0.005){ toast('速度是 100%，沒有變化'); return; } const r=edRange(); edPush();
