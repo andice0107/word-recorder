@@ -110,8 +110,37 @@ table.log td,table.log th{border-bottom:1px solid var(--line);padding:4px 6px;te
   #exportCard{grid-column:1;grid-row:2}
   #recCard{grid-column:2;grid-row:1 / span 2}
   #listCard{grid-column:3;grid-row:1 / span 2}
-  #list{max-height:calc(100vh - 330px);min-height:420px}
 }
+details>summary{cursor:pointer;color:var(--sub);font-size:15px;padding:2px 0;list-style:none}
+details>summary::before{content:'▸ '}
+details[open]>summary::before{content:'▾ '}
+.card h2.ch{cursor:pointer;user-select:none}
+.card h2.ch::after{content:'▾';margin-left:auto;color:var(--sub)}
+.card.collapsed h2.ch::after{content:'▸'}
+.card.collapsed>*:not(h2){display:none}
+.card.collapsed h2{margin-bottom:0}
+@media (min-width:1400px) and (min-height:640px){
+  html,body{height:100%;overflow:hidden}
+  body{display:flex;flex-direction:column}
+  header{padding:8px 20px}
+  main{flex:1;min-height:0;grid-template-rows:auto minmax(0,1fr);padding:10px 14px;gap:12px}
+  .card{overflow:auto;min-height:0;padding:12px 16px}
+  #recCard{grid-row:1 / span 2}
+  #listCard{grid-row:1 / span 2;display:flex;flex-direction:column}
+  #listCard{align-self:start;max-height:100%}
+  #list{flex:0 1 auto;--rowh:46px;max-height:calc(8*var(--rowh) + 6px)!important;min-height:calc(5*var(--rowh))}
+  #recBtn{width:clamp(110px,19vh,200px);height:clamp(110px,19vh,200px);font-size:clamp(17px,2.6vh,24px);margin:8px auto 4px}
+  #recBtn .big{font-size:clamp(30px,5.5vh,54px)}
+  #wordEdit{font-size:clamp(34px,6vh,56px)}
+  #curZy{font-size:clamp(22px,3.4vh,30px);min-height:0}
+}
+@media (min-width:1400px) and (min-height:640px) and (max-height:860px){
+  .prog{display:none} #curInfo{font-size:13px} #recStatus{min-height:0;margin:2px 0}
+  #recBtn{width:clamp(110px,15vh,160px);height:clamp(110px,15vh,160px);margin:4px auto 2px}
+  #confirmBox{margin:4px 0;padding:6px 10px} .ctrls{margin-top:4px} .ctrls button{padding:7px 12px}
+}
+.exportGrid>*{min-width:0} .exportGrid span{white-space:nowrap} .exportGrid select,.exportGrid input{max-width:100%;width:100%}
+#recBtn #recLabel{display:block;line-height:1.15}
 #toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#333;color:#fff;padding:10px 18px;border-radius:12px;opacity:0;transition:opacity .2s;pointer-events:none;z-index:50;font-size:16px;max-width:90vw;text-align:center}
 #toast.show{opacity:1}
 .danger{color:var(--main2)}
@@ -126,7 +155,7 @@ table.log td,table.log th{border-bottom:1px solid var(--line);padding:4px 6px;te
 <div class="wrap" id="banners"></div>
 <main>
   <section class="card" id="addCard">
-    <h2><span class="step">1</span>輸入要錄的語詞</h2>
+    <h2 class="ch"><span class="step">1</span>輸入要錄的語詞<span class="hint" style="margin:0 0 0 6px">（選填）</span></h2>
     <textarea id="wordsIn" placeholder="一行一個語詞，例如：
 蘋果
 長大
@@ -148,10 +177,11 @@ table.log td,table.log th{border-bottom:1px solid var(--line);padding:4px 6px;te
     <div id="curZy"></div>
     <div class="choices" id="choices"></div>
     <div id="confirmBox"></div>
+    <details id="editSec"><summary>✎ 修改注音／要教的注音符號</summary>
     <div class="row" style="justify-content:center;margin:4px 0"><label>這個語詞要教的注音符號<input type="text" id="targetEdit" style="width:5.5em;text-align:center" placeholder="自動"></label><span id="targetChips" class="choices" style="margin:0"></span></div>
     <div class="row" style="justify-content:center">
       <label style="flex:1;max-width:420px">注音<input type="text" id="zyEdit" placeholder="這裡可以修改注音"></label>
-    </div>
+    </div></details>
     <button id="recBtn"><span class="big">●</span><span id="recLabel">按我開始錄音</span></button>
     <canvas id="meter" width="600" height="16"></canvas>
     <div id="recStatus"></div>
@@ -161,14 +191,16 @@ table.log td,table.log th{border-bottom:1px solid var(--line);padding:4px 6px;te
       <button id="editBtn">✂️ 編輯</button>
       <button id="nextBtn" class="green">下一個 ⏭</button>
     </div>
-    <div class="row" style="justify-content:center;margin-top:10px;font-size:15px">
+    <div id="diskLine" class="hint" style="text-align:center"></div>
+    <details id="optSec"><summary>⚙️ 錄音選項與鍵盤快速鍵</summary>
+    <div class="row" style="justify-content:center;margin-top:6px;font-size:15px">
       <label><input type="checkbox" id="optFree"> 自由錄音（不先輸入語詞，錄完自動辨識）</label>
       <label><input type="checkbox" id="optTrim" checked> 自動剪掉前後沒聲音的地方</label>
       <label><input type="checkbox" id="optAutoplay" checked> 錄完自動播放一次</label>
       
     </div>
-    <div id="diskLine" class="hint" style="text-align:center"></div>
-    <div class="keys">鍵盤快速鍵：<kbd>空白鍵</kbd> 開始／停止錄音　<kbd>P</kbd> 播放　<kbd>Enter</kbd> 下一個　<kbd>←</kbd><kbd>→</kbd> 上一個／下一個</div>
+    <div class="keys">鍵盤快速鍵：<kbd>空白鍵</kbd> 開始／停止錄音　<kbd>P</kbd> 播放　<kbd>Enter</kbd> 確認並繼續　<kbd>←</kbd><kbd>→</kbd> 上一個／下一個</div>
+    </details>
   </section>
 
   <section class="card" id="listCard">
@@ -185,7 +217,7 @@ table.log td,table.log th{border-bottom:1px solid var(--line);padding:4px 6px;te
   </section>
 
   <section class="card" id="exportCard">
-    <h2><span class="step">4</span>存檔與備份</h2>
+    <h2 class="ch"><span class="step">4</span>存檔與備份<span id="exportSum" class="hint" style="margin:0 0 0 8px"></span></h2>
     <div class="folderBox">
       <b>💾 直接存到電腦裡的資料夾（用 Chrome 或 Edge）</b>
       <div class="nm" id="dirName"></div>
@@ -560,6 +592,7 @@ function renderCur(){
   const nz=(it.zy||'').split(' ').filter(Boolean).length, nw=[...(it.word||'')].length;
   if(it.word && nz!==nw){ const w=document.createElement('div'); w.className='lab'; w.textContent=`⚠️ 注音有 ${nz} 個音、語詞有 ${nw} 個字，請檢查注音是否正確（每個字的注音中間空一格）`; ch.appendChild(w); }
   if((it.zy||'').includes('？')){ const w=document.createElement('div'); w.className='lab'; w.textContent='⚠️ 有字查不到注音（顯示「？」），請在注音框裡補上'; ch.appendChild(w); }
+  if(ch.children.length) $('editSec').open=true;
   // 確認區：錄好的聲音一定要按確認才會存
   if(it.pend){
     cb.style.display='block';
@@ -990,7 +1023,7 @@ const dirReady=()=>!!(FS_OK&&dirHandle&&dirOK);
 const idbKvPut=(k,v)=>tx('kv','readwrite',s=>s.put(v,k)).catch(()=>{});
 const idbKvGet=k=>tx('kv','readonly',s=>s.get(k)).catch(()=>null);
 function updateDiskUI(){
-  const nm=$('dirName'), line=$('diskLine');
+  const nm=$('dirName'), line=$('diskLine'); $('exportSum').textContent=dirHandle?'📁 '+dirHandle.name+(dirOK?'':'（需要允許）'):'（還沒選資料夾）';
   $('reauthBtn').hidden=!(FS_OK&&dirHandle&&!dirOK);
   $('pickDirBtn').disabled=!FS_OK; $('syncBtn').disabled=!dirReady(); $('optAutoSave').disabled=!FS_OK; $('scanBtn').disabled=!(FS_OK&&dirHandle);
   if(!FS_OK){ nm.textContent='⚠️ 這個瀏覽器（例如 Safari）不能直接存進資料夾，請改用 Chrome 或 Edge；或使用下方的 zip 下載。'; line.textContent=''; $('scanInfo').textContent='這個瀏覽器不能讀取資料夾，清單只有瀏覽器裡的錄音。'; return; }
@@ -1545,6 +1578,8 @@ $('helpBtn').onclick=()=>$('helpDlg').showModal();
   const seq=seqList(); curId=(seq.find(x=>!hasRec(x))||seq[0]||{}).id||null;
   renderAll();
   if(dirHandle&&dirOK) await scanFolder(false);
+  { const st=kvGet('cardCollapsed',{}); for(const id of ['addCard','exportCard']){ const c=$(id); let v=st[id]; if(v===undefined) v=(id==='addCard')?true:!!dirHandle; c.classList.toggle('collapsed',v);
+      c.querySelector('h2').addEventListener('click',e=>{ if(e.target.closest('input,button')) return; c.classList.toggle('collapsed'); const t=kvGet('cardCollapsed',{}); t[id]=c.classList.contains('collapsed'); kvSet('cardCollapsed',t); }); } }
   if(!items.length && !dirHandle && !kvGet('seenHelp',false)){ kvSet('seenHelp',true); $('helpDlg').showModal(); }
   window.addEventListener('beforeunload',e=>{ if(recording||items.some(x=>x.pend)){ e.preventDefault(); e.returnValue=''; } });
 })();
