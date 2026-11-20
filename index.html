@@ -233,7 +233,7 @@ input,select,textarea{min-width:0;max-width:100%}
       <label><input type="checkbox" id="optAutoplay" checked> 錄完自動播放一次</label>
       
     </div>
-    <div class="keys">鍵盤快速鍵：<kbd>空白鍵</kbd> 開始／停止錄音　<kbd>P</kbd> 播放　<kbd>Enter</kbd> 確認並繼續　<kbd>←</kbd><kbd>→</kbd> 上一個／下一個</div>
+    <div class="keys">鍵盤快速鍵：<kbd>空白鍵</kbd> 開始／停止錄音　<kbd>P</kbd> 播放　<kbd>Enter</kbd> 確認並繼續　<kbd>Esc</kbd> 不要這個錄音　<kbd>←</kbd><kbd>→</kbd> 上一個／下一個</div>
     </details>
   </section>
 
@@ -379,7 +379,7 @@ input,select,textarea{min-width:0;max-width:100%}
       <span class="hint" style="margin:0">播放時橘色線會跑動，顯示唸到哪裡。在想剪的地方按「設為起點／終點」，或在波形上拖曳選一段；點一下波形可換播放位置。沒有選取時，下面的功能會套用在整段。</span>
     </div>
     <div class="edGroup"><h3>✂️ 修剪</h3><div class="row">
-      <button id="edCrop">只保留選取的</button><button id="edCut">刪除選取的</button><button id="edTrim">自動剪掉前後空白</button></div></div>
+      <button id="edCrop">只保留選取的</button><button id="edCut" title="Windows：Delete 鍵　Mac：delete 鍵（⌫）或 fn+delete">刪除選取的（Del／Mac ⌫）</button><button id="edTrim">自動剪掉前後空白</button></div></div>
     <div class="edGroup"><h3>🔊 音量</h3><div class="row">
       <input type="range" id="edGain" min="20" max="400" value="100"><b id="edGainV">100%</b>
       <button id="edGainGo">套用音量</button><button id="edNorm">自動調到最大聲（不爆音）</button></div>
@@ -661,7 +661,7 @@ function renderCur(){
     if(redo){ const po=document.createElement('button'); po.textContent='🟦 聽舊的（現有檔案）'; po.onclick=()=>playItem(it,false,true); cb.appendChild(po); }
     const pl=document.createElement('button'); pl.textContent=redo?'🟩 聽新的（剛錄的）':'▶ 再聽一次'; pl.onclick=()=>playItem(it); cb.appendChild(pl);
     const ok=document.createElement('button'); ok.className='green'; ok.textContent='✔ 確認'+(redo?'並覆蓋舊檔':(dirReady()&&$('optAutoSave').checked?'並存進資料夾':'並儲存'))+'（Enter）'; ok.onclick=()=>nextTodo(); cb.appendChild(ok);
-    const no=document.createElement('button'); no.textContent='✖ 不要這個錄音'; no.onclick=()=>discardPend(it); cb.appendChild(no);
+    const no=document.createElement('button'); no.textContent='✖ 不要這個錄音（Esc）'; no.onclick=()=>discardPend(it); cb.appendChild(no);
   }
 }
 function setWord(it,w){
@@ -1054,6 +1054,7 @@ document.addEventListener('keydown',e=>{
   if(e.isComposing) return;
   if(e.code==='Space'){ e.preventDefault(); if(!e.repeat) $('recBtn').click(); }
   else if(e.key==='Enter'){ e.preventDefault(); nextTodo(); }
+  else if(e.key==='Escape'){ const it=cur(); if(it&&it.pend){ e.preventDefault(); discardPend(it); } }
   else if(e.key==='p'||e.key==='P'||e.key==='ㄅ'){ playItem(cur()); }
   else if(e.key==='ArrowRight'||e.key==='ArrowDown'){ e.preventDefault(); move(1); }
   else if(e.key==='ArrowLeft'||e.key==='ArrowUp'){ e.preventDefault(); move(-1); }
@@ -1443,6 +1444,7 @@ function edMark(which){
   $('edUndo').onclick=()=>{ if(ED.undo.length){ edSet(ED.undo.pop()); } };
   $('edOrig').onclick=()=>{ if(!ED.initial) return; edPush(); ED.rate=ED.initialRate; edSet(ED.initial.slice()); toast('已還原成剛打開時的樣子（按「儲存修改」才會生效）'); };
   $('edCancel').onclick=()=>{ if(ED.undo.length && !confirm('有修改還沒存，要放棄嗎？')) return; edStop(); $('editDlg').close(); };
+  $('editDlg').addEventListener('keydown',e=>{ const t=(e.target.tagName||'').toLowerCase(); if(t==='input'||t==='textarea'||t==='select') return; if(e.key==='Delete'||e.key==='Backspace'||e.key==='Del'){ e.preventDefault(); $('edCut').click(); } });
   $('editDlg').addEventListener('cancel',e=>{ if(ED.undo.length && !confirm('有修改還沒存，要放棄嗎？')) e.preventDefault(); edStop(); });
   $('edSave').onclick=async()=>{
     const it=ED.it; if(!it) return; edStop();
