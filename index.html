@@ -16,7 +16,7 @@ header{display:flex;align-items:center;gap:12px;padding:12px 20px;background:#ff
 header h1{font-size:22px;margin:0;flex:1;white-space:nowrap}
 #saveState{font-size:14px;color:var(--sub)}
 main{max-width:none;width:100%;margin:0;padding:14px 16px;display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:16px}
-@media (max-width:860px){main{grid-template-columns:1fr}}
+@media (max-width:860px){main{grid-template-columns:minmax(0,1fr)}}
 .card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px 18px}
 .card h2{font-size:18px;margin:0 0 10px;display:flex;align-items:center;gap:8px}
 .step{display:inline-grid;place-items:center;width:26px;height:26px;border-radius:50%;background:var(--main);color:#fff;font-size:15px}
@@ -152,6 +152,25 @@ details[open]>summary::before{content:'▾ '}
 .dupAct{display:flex;flex-direction:column;gap:8px;margin-top:8px}
 .dupAct button{text-align:left;padding:10px 14px}
 @media(max-width:560px){.dupCols{grid-template-columns:1fr}}
+main>.card{min-width:0}
+input,select,textarea{min-width:0;max-width:100%}
+.row>label{white-space:normal}
+.row>label input[type=text]{min-width:0}
+#wordEdit{font-size:clamp(30px,9vw,56px);letter-spacing:2px}
+@media (max-width:600px){
+  body{font-size:16px}
+  header{padding:8px 12px} header h1{font-size:19px;white-space:normal}
+  main{padding:10px}
+  .card{padding:12px 12px}
+  #recBtn{width:clamp(120px,42vw,190px);height:clamp(120px,42vw,190px);font-size:19px}
+  .ctrls button{min-width:0;flex:1 1 40%}
+  .exportGrid{grid-template-columns:minmax(0,1fr)}
+  .exportGrid span{white-space:normal}
+  .item .z{min-width:0}
+  #list{max-height:60vh}
+  .dlg{padding:14px 14px}
+  input[type=range]{width:100%;max-width:100%}
+}
 #toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#333;color:#fff;padding:10px 18px;border-radius:12px;opacity:0;transition:opacity .2s;pointer-events:none;z-index:50;font-size:16px;max-width:90vw;text-align:center}
 #toast.show{opacity:1}
 .danger{color:var(--main2)}
@@ -238,7 +257,7 @@ details[open]>summary::before{content:'▾ '}
         <button id="syncBtn">📤 把瀏覽器裡還沒存的錄音存進資料夾</button>
         <label><input type="checkbox" id="optAutoSave" checked> 錄好（確認語詞後）自動存進去</label>
       </div>
-      <div class="row" style="margin-top:6px"><label style="flex:1">資料夾完整路徑（選填）<input type="text" id="rootPath" placeholder="例如 D:\語詞音檔　或　/Users/老師/語詞音檔" style="min-width:14em"></label></div>
+      <div class="row" style="margin-top:6px"><label style="flex:1">資料夾完整路徑（選填）<input type="text" id="rootPath" placeholder="例如 D:\語詞音檔　或　/Users/老師/語詞音檔" style="min-width:0"></label></div>
       <p class="hint" style="margin-bottom:0">選好一次，之後每次打開工具都會掃描這個資料夾裡的音檔；錄好並按「確認」才會依下面的分法放進子資料夾。完整路徑只是讓清單的 📋 可以複製出完整位置（網頁無法自己打開檔案總管）。</p>
     </div>
     <div class="exportGrid">
