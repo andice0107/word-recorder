@@ -96,6 +96,14 @@ dialog::backdrop{background:rgba(0,0,0,.4)}
 .edGroup h3{margin:0 0 6px!important;font-size:16px}
 .edGroup .row{margin:6px 0}
 input[type=range]{width:220px;max-width:55vw}
+#list .folder{cursor:pointer;user-select:none}
+#list .folder .arrow{display:inline-block;width:1.1em;color:var(--sub)}
+.item{flex-wrap:wrap}.item .z{min-width:6em}
+.item.pend{background:#fff4d6}
+.item button{padding:2px 7px}
+dialog textarea,#infoDlg input[type=text]{font-size:17px}
+table.log{border-collapse:collapse;width:100%;font-size:14px}
+table.log td,table.log th{border-bottom:1px solid var(--line);padding:4px 6px;text-align:left;vertical-align:top}
 #toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#333;color:#fff;padding:10px 18px;border-radius:12px;opacity:0;transition:opacity .2s;pointer-events:none;z-index:50;font-size:16px;max-width:90vw;text-align:center}
 #toast.show{opacity:1}
 .danger{color:var(--main2)}
@@ -149,14 +157,17 @@ input[type=range]{width:220px;max-width:55vw}
       <label><input type="checkbox" id="optFree"> 自由錄音（不先輸入語詞，錄完自動辨識）</label>
       <label><input type="checkbox" id="optTrim" checked> 自動剪掉前後沒聲音的地方</label>
       <label><input type="checkbox" id="optAutoplay" checked> 錄完自動播放一次</label>
-      <label><input type="checkbox" id="optAutoNext"> 錄完自動跳下一個</label>
+      
     </div>
     <div id="diskLine" class="hint" style="text-align:center"></div>
     <div class="keys">鍵盤快速鍵：<kbd>空白鍵</kbd> 開始／停止錄音　<kbd>P</kbd> 播放　<kbd>Enter</kbd> 下一個　<kbd>←</kbd><kbd>→</kbd> 上一個／下一個</div>
   </section>
 
   <section class="card" id="listCard">
-    <h2><span class="step">3</span>清單（依注音分好的資料夾）</h2>
+    <h2><span class="step">3</span>音檔清單（資料夾裡的檔案）</h2>
+    <div class="row" style="margin-bottom:6px"><input type="text" id="searchIn" placeholder="🔍 搜尋：語詞，或打注音符號（例如 ㄔ，語詞裡任何一個字有ㄔ都找得到）" style="flex:1;min-width:12em" autocomplete="off"><button id="searchClr">✕</button></div>
+    <div class="row" style="margin-bottom:6px"><button id="scanBtn" class="blue">🔄 重新掃描資料夾</button><button id="expAll">全部展開</button><button id="colAll">全部收合</button><button id="logBtn">📜 日誌</button></div>
+    <div id="scanInfo" class="hint"></div>
     <div class="tabs" id="filterTabs">
       <button data-f="all" class="on">全部</button>
       <button data-f="todo">還沒錄</button>
@@ -173,10 +184,11 @@ input[type=range]{width:220px;max-width:55vw}
       <div class="row">
         <button class="blue" id="pickDirBtn">📂 選擇存放資料夾</button>
         <button class="green" id="reauthBtn" hidden>🔓 重新允許存取</button>
-        <button id="syncBtn">🔄 全部重新整理存入</button>
+        <button id="syncBtn">📤 把瀏覽器裡還沒存的錄音存進資料夾</button>
         <label><input type="checkbox" id="optAutoSave" checked> 錄好（確認語詞後）自動存進去</label>
       </div>
-      <p class="hint" style="margin-bottom:0">選好一次，之後每錄好一個音檔，就會自動依下面的分法放進對應的子資料夾。</p>
+      <div class="row" style="margin-top:6px"><label style="flex:1">資料夾完整路徑（選填）<input type="text" id="rootPath" placeholder="例如 D:\語詞音檔　或　/Users/老師/語詞音檔" style="min-width:14em"></label></div>
+      <p class="hint" style="margin-bottom:0">選好一次，之後每次打開工具都會掃描這個資料夾裡的音檔；錄好並按「確認」才會依下面的分法放進子資料夾。完整路徑只是讓清單的 📋 可以複製出完整位置（網頁無法自己打開檔案總管）。</p>
     </div>
     <div class="exportGrid">
       <span>資料夾分法</span>
@@ -209,7 +221,7 @@ input[type=range]{width:220px;max-width:55vw}
     <p class="hint">zip 裡面已經依上面的方式分好資料夾，還附一份「清單.csv」（可用 Excel 打開）和語音包 voice-pack.json（可以放進注音拼音教學板、聽拼卡、聽辨遊戲使用）。</p>
     <div class="row" style="margin-top:8px">
       <button id="importBtn">📥 匯入之前下載的 zip／音檔</button>
-      <button id="clearBtn" class="danger">🗑 清空全部</button>
+      <button id="clearBtn" class="danger">🗑 清空瀏覽器暫存（不刪資料夾檔案）</button>
       <input type="file" id="importFile" multiple accept=".zip,.json,.wav,.mp3,.m4a,.webm,.ogg,audio/*,application/zip" hidden>
     </div>
     <p class="hint">錄音會自動存在這台電腦的這個瀏覽器裡，關掉再開還在。但換電腦、換瀏覽器或清除瀏覽紀錄就會不見，<b>錄完請記得按「下載全部」備份</b>。要繼續錄時，用「匯入」把 zip 放回來就可以。</p>
@@ -246,6 +258,14 @@ input[type=range]{width:220px;max-width:55vw}
       <li>「要教的注音符號」可以在 ① 一次填好（這批語詞都在教 ㄆ），或在 ② 針對單一語詞點選；沒填時，用第一個字的聲符。</li>
       <li>如果之後改了語詞、注音或分法，音檔會自動搬到新位置；改了分法後可按「全部重新整理存入」。</li>
       <li>Safari 不能直接存進資料夾，請改用 Chrome／Edge，或用下方的 zip 下載。</li>
+    </ul>
+    <h3>資料夾與清單（每次打開都會掃描）</h3>
+    <ul>
+      <li>在 ④ 選好資料夾後，每次打開工具，③ 清單就是這個資料夾裡的音檔（Chrome 會問一次「允許讀取」，請按允許；選「每次造訪時都允許」就不用再按）。</li>
+      <li>清單可收合；上方搜尋框打語詞，或打一個注音符號（例如 ㄔ），語詞裡<b>任何一個字</b>有這個符號的音檔都會列出來，直接按 ▶ 聽。</li>
+      <li>每個音檔右邊：▶ 播放、✂ 編輯音檔、🔁 重做（重新錄音）、✎ 改名／移動／複製、📋 複製資料夾路徑、🗑 從電腦刪除（會再警告一次，無法復原）。</li>
+      <li><b>錄好的音檔一定要按「確認」才會存</b>：重錄時，按確認才會蓋掉舊檔；不按就不會存。</li>
+      <li>網頁沒辦法直接幫您打開檔案總管；請用 📋 複製路徑，貼到檔案總管（Windows）網址列，或 Finder 的「前往資料夾」（Cmd+Shift+G）。</li>
     </ul>
     <h3>編輯音檔（修剪、音量、去雜訊、音長）</h3>
     <ul>
@@ -298,9 +318,26 @@ input[type=range]{width:220px;max-width:55vw}
       <label><input type="radio" name="edMode" value="pitch"> 連音高一起變（像錄音帶快轉）</label>
       <button id="edSpdGo">套用音長</button></div>
       <div class="hint">數字大於 100% 是變快、變短；小於 100% 是變慢、變長。</div></div>
-    <div class="edGroup row"><button id="edUndo">↶ 復原上一步</button><button id="edOrig">還原成最原始的錄音</button></div>
+    <div class="edGroup row"><button id="edUndo">↶ 復原上一步</button><button id="edOrig">還原成剛打開時的樣子</button></div>
   </div>
   <div class="dlgFoot"><button id="edCancel">關閉（不存）</button> <button id="edSave" class="primary">💾 儲存修改</button></div>
+</dialog>
+<dialog id="infoDlg">
+  <div class="dlg">
+    <h2 style="margin-top:0">✎ 改名／移動／複製</h2>
+    <div class="exportGrid">
+      <span>語詞（檔名）</span><input type="text" id="inWord">
+      <span>注音</span><input type="text" id="inZy">
+      <span>要教的注音符號<br><small>（決定放哪個資料夾）</small></span><input type="text" id="inTarget" placeholder="例如 ㄆ；留空＝用第一個字的聲符">
+    </div>
+    <p class="hint" id="inPath"></p>
+    <p class="hint"><b>儲存</b>＝改名；如果「要教的注音符號」改了，檔案也會搬到新的資料夾（舊位置的檔案會消失）。<br><b>另存一份</b>＝複製到新的名字／資料夾，原本的檔案保留。</p>
+  </div>
+  <div class="dlgFoot"><button id="inCancel">取消</button> <button id="inCopy">📑 另存一份（複製）</button> <button id="inSave" class="primary">儲存（改名／移動）</button></div>
+</dialog>
+<dialog id="logDlg">
+  <div class="dlg"><h2 style="margin-top:0">📜 生檔日誌</h2><div class="hint">新增、重錄、編輯、改名、移動、複製、刪除都會記在這裡，也會同步存成資料夾裡的「生檔日誌.csv」。</div><div id="logBody"></div></div>
+  <div class="dlgFoot"><button id="logCsv">下載 CSV</button> <button class="primary" onclick="document.getElementById('logDlg').close()">關閉</button></div>
 </dialog>
 <div id="toast"></div>
 
@@ -374,7 +411,9 @@ function tx(store,mode,fn){
   if(!db) return Promise.resolve();
   return new Promise((res,rej)=>{ const t=db.transaction(store,mode); const s=t.objectStore(store); const r=fn(s); t.oncomplete=()=>res(r&&r.result); t.onerror=()=>rej(t.error); });
 }
-const dbPut=it=>tx('items','readwrite',s=>s.put(it)).catch(e=>{ showBanner('⚠️ 存檔失敗（可能是電腦空間不足）：'+e,'err'); });
+const hasRec=x=>!!(x.audio||x.savedPath);
+const rawPut=it=>{ if(!(it.audio||it.savedPath||it.listed)) return Promise.resolve(); const o=Object.assign({},it,{pend:null}); return tx('items','readwrite',s=>s.put(o)).catch(e=>{ showBanner('⚠️ 存檔失敗（可能是電腦空間不足）：'+e,'err'); }); };
+const dbPut=it=>{ if(it.src==='disk'){ queueIndex(); return Promise.resolve(); } return rawPut(it); };
 const dbDel=id=>tx('items','readwrite',s=>s.delete(id));
 const dbAll=()=>tx('items','readonly',s=>s.getAll());
 const dbClear=()=>tx('items','readwrite',s=>s.clear());
@@ -416,12 +455,12 @@ async function addWords(){
     let segs=null, z=zy;
     if(!z){ segs=lookupSegments(word); z=segsToZy(segs); }
     if(items.some(x=>x.word===word && x.zy===z && (x.group||'')===group)){ skipped++; continue; }
-    const it={id:uid(), word, zy:z, group, segs, target:$('targetIn0').value.trim(), confirmed:true, audio:null, mime:'', ext:'', dur:0, order:++order, t:Date.now()};
+    const it={id:uid(), word, zy:z, group, segs, target:$('targetIn0').value.trim(), listed:true, audio:null, mime:'', ext:'', dur:0, order:++order, t:Date.now()};
     items.push(it); await dbPut(it); added++; if(!firstNew) firstNew=it;
   }
   $('wordsIn').value='';
   toast(`加入 ${added} 個語詞`+(skipped?`（${skipped} 個已經在清單裡，略過）`:''));
-  if(firstNew && (!curId || cur()?.audio)) select(firstNew.id);
+  if(firstNew && (!curId || hasRec(cur()||{}))) select(firstNew.id);
   renderAll();
 }
 
@@ -467,14 +506,14 @@ function cur(){ return items.find(x=>x.id===curId); }
 function seqList(){ return items.slice().sort((a,b)=>a.order-b.order); }
 function renderAll(){ renderCur(); renderList(); renderPreview(); renderProg(); }
 function renderProg(){
-  const n=items.length, d=items.filter(x=>x.audio).length;
+  const n=items.length, d=items.filter(hasRec).length, pn=items.filter(x=>x.pend).length;
   $('progBar').style.width=n?(d/n*100)+'%':'0';
-  $('saveState').textContent = n? `已錄 ${d} / ${n} 個` + (memMode?'（⚠️ 無法自動儲存）':'　✔ 已自動儲存') : '';
+  $('saveState').textContent = n? `共 ${d} 個音檔`+(pn?`　｜　🔴 ${pn} 個還沒確認`:'')+(memMode?'（⚠️ 無法自動儲存）':'') : '';
 }
 function renderCur(){
   const it=cur();
   const ch=$('choices'); ch.innerHTML=''; const cb=$('confirmBox'); cb.innerHTML=''; cb.style.display='none'; $('targetChips').innerHTML='';
-  $('recBtn').disabled=false;
+  $('recBtn').disabled=false; $('nextBtn').textContent='下一個 ⏭';
   if(!it){
     $('wordEdit').value=''; $('wordEdit').disabled=true; $('wordEdit').placeholder='按下面的紅鈕就能直接錄音，錄完自動辨識語詞';
     $('curZy').textContent=''; $('zyEdit').value=''; $('zyEdit').disabled=true; $('targetEdit').value=''; $('targetEdit').disabled=true;
@@ -484,16 +523,18 @@ function renderCur(){
   $('wordEdit').disabled=false; $('zyEdit').disabled=false; $('targetEdit').disabled=false;
   $('wordEdit').placeholder='錄完會自動辨識，也可以直接在這裡打字';
   const seq=seqList(); const idx=seq.indexOf(it);
-  $('curInfo').textContent=`第 ${idx+1} 個，共 ${seq.length} 個`+(it.group?`　｜　${it.group}`:'')+(it.audio?`　｜　✔ 已錄（${it.dur.toFixed(1)} 秒）`:'　｜　還沒錄');
+  const st=it.pend?(hasRec(it)?'🔁 重錄中（還沒覆蓋舊檔）':'🆕 新錄音（還沒存）'):(hasRec(it)?'✔ 已存'+(it.savedPath?'：'+it.savedPath:'')+(it.dur?`（${it.dur.toFixed(1)} 秒）`:''):'還沒錄');
+  $('curInfo').textContent=`第 ${idx+1} 個，共 ${seq.length} 個`+(it.group?`　｜　${it.group}`:'')+`　｜　${st}`;
   if(document.activeElement!==$('wordEdit')) $('wordEdit').value=it.word||'';
   $('curZy').textContent=it.zy||'';
   if(document.activeElement!==$('zyEdit')) $('zyEdit').value=it.zy||'';
   if(document.activeElement!==$('targetEdit')) $('targetEdit').value=it.target||'';
-  $('playBtn').disabled=!it.audio; $('editBtn').disabled=!it.audio;
+  const hv=hasRec(it)||!!it.pend; $('playBtn').disabled=!hv; $('editBtn').disabled=!hv;
+  if(it.pend) $('nextBtn').textContent='✔ 確認並繼續';
   // 要教的符號：從注音裡挑
-  [...new Set([...(it.zy||'')].filter(c=>/[ㄅ-ㄩ]/.test(c)))].forEach(sym=>{
-    const b=document.createElement('button'); b.className='chip'+(it.target===sym?' on':''); b.textContent=sym; b.title='點一下＝這個語詞要教「'+sym+'」';
-    b.onclick=()=>{ it.target=it.target===sym?'':sym; touchItem(it); }; $('targetChips').appendChild(b);
+  [...new Set([...(it.zy||'')].filter(c=>/[\u3105-\u3129]/.test(c)))].forEach(sym=>{
+    const b=document.createElement('button'); b.className='chip'+(it.target===sym?' on':''); b.textContent=sym; b.title='點一下＝這個語詞要教「'+sym+'」（檔案會放進這個符號的資料夾）';
+    b.onclick=()=>{ it.target=it.target===sym?'':sym; it._reclass=true; touchItem(it); }; $('targetChips').appendChild(b);
   });
   // 破音字選擇
   const multi=(it.segs||[]).filter(s=>s.options.length>1);
@@ -503,7 +544,7 @@ function renderCur(){
       if(s.options.length<2) return;
       s.options.forEach((o,oi)=>{
         const b=document.createElement('button'); b.textContent=s.text+'：'+o; if(oi===s.pick && it.zy===segsToZy(it.segs)) b.className='on';
-        b.onclick=()=>{ s.pick=oi; it.zy=segsToZy(it.segs); touchItem(it); };
+        b.onclick=()=>{ s.pick=oi; it.zy=segsToZy(it.segs); it._rename=true; touchItem(it); };
         ch.appendChild(b);
       });
     });
@@ -511,77 +552,184 @@ function renderCur(){
   const nz=(it.zy||'').split(' ').filter(Boolean).length, nw=[...(it.word||'')].length;
   if(it.word && nz!==nw){ const w=document.createElement('div'); w.className='lab'; w.textContent=`⚠️ 注音有 ${nz} 個音、語詞有 ${nw} 個字，請檢查注音是否正確（每個字的注音中間空一格）`; ch.appendChild(w); }
   if((it.zy||'').includes('？')){ const w=document.createElement('div'); w.className='lab'; w.textContent='⚠️ 有字查不到注音（顯示「？」），請在注音框裡補上'; ch.appendChild(w); }
-  // 辨識結果確認
-  if(it.audio && it.confirmed===false){
+  // 確認區：錄好的聲音一定要按確認才會存
+  if(it.pend){
     cb.style.display='block';
+    const redo=hasRec(it);
     const p=document.createElement('div');
-    p.innerHTML=it.word?`🎧 系統聽到的是「<b style="font-size:22px">${esc(it.word)}</b>」，<b>對不對？</b><br><span style="font-size:14px;color:#7a7268">不對請直接修改上面的大字，語詞就是音檔的檔名</span>`:'🎧 沒有辨識出文字，請在上面的大框打上語詞。';
+    p.innerHTML=(redo?'🔁 <b>重錄的新聲音（還沒存）</b>：聽過覺得可以，按確認才會<b>覆蓋舊檔</b>。':'🆕 <b>新錄音（還沒存）</b>：聽過、語詞也正確，按確認才會存檔。')+
+      (it.word?`<br>語詞：「<b style="font-size:22px">${esc(it.word)}</b>」`+(it.wordAuto?'<span style="font-size:14px;color:#7a7268">（系統聽出來的，不對請直接改上面的大字）</span>':''):'<br>🎧 沒有辨識出文字，請在上面的大框打上語詞。');
     cb.appendChild(p);
     const others=(it.alts||[]).filter(a=>a!==it.word);
     if(others.length){ const l=document.createElement('span'); l.style.fontSize='14px'; l.textContent='其他可能：'; cb.appendChild(l);
       others.forEach(a=>{ const b=document.createElement('button'); b.textContent=a; b.onclick=()=>setWord(it,a); cb.appendChild(b); }); cb.appendChild(document.createElement('br')); }
-    const ok=document.createElement('button'); ok.className='green'; ok.textContent='✔ 對，確認'+(dirReady()&&$('optAutoSave').checked?'並存檔':'')+'（Enter）'; ok.onclick=()=>nextTodo(); cb.appendChild(ok);
-  }else if(it.audio && it.word && (it.alts||[]).length && it.alts[0]!==it.word){
-    cb.style.display='block'; cb.style.background='#f6efe4'; cb.style.borderColor='#e8dfd2';
-    cb.innerHTML=`🎧 系統聽到的是「${esc(it.alts[0])}」，和語詞「${esc(it.word)}」不一樣。<span style="font-size:14px;color:#7a7268">（可能是唸錯或辨識錯，請聽一次確認）</span>`;
+    const pl=document.createElement('button'); pl.textContent='▶ 再聽一次'; pl.onclick=()=>playItem(it); cb.appendChild(pl);
+    const ok=document.createElement('button'); ok.className='green'; ok.textContent='✔ 確認'+(redo?'並覆蓋舊檔':(dirReady()&&$('optAutoSave').checked?'並存進資料夾':'並儲存'))+'（Enter）'; ok.onclick=()=>nextTodo(); cb.appendChild(ok);
+    const no=document.createElement('button'); no.textContent='✖ 不要這個錄音'; no.onclick=()=>discardPend(it); cb.appendChild(no);
   }
 }
 function setWord(it,w){
   w=hanOnly(w); if(w===it.word) return;
-  it.word=w; if(w){ it.segs=lookupSegments(w); it.zy=segsToZy(it.segs); toast('注音已重新標好，請檢查'); }
+  it.word=w; it.wordAuto=false; it._rename=true; if(w){ it.segs=lookupSegments(w); it.zy=segsToZy(it.segs); toast('注音已重新標好，請檢查'); }
   $('wordEdit').value=w; touchItem(it);
 }
-function touchItem(it){ dbPut(it); renderAll(); if(it.audio && it.confirmed!==false) saveToDisk(it); }
+function touchItem(it){ dbPut(it); renderAll(); if(!it.pend && hasRec(it) && dirReady()) renameOnDisk(it); }
+async function renameOnDisk(it){
+  const old=it.savedPath; const ok=await saveToDisk(it,true);
+  if(ok && old!==it.savedPath){ addLog(old?'改名／移動':'存入資料夾',it,old?'原位置：'+old:''); toast(old?'檔案已改名／移動':'已存進資料夾'); }
+  renderAll();
+}
+/* ---- 清單 ---- */
+let openSet=new Set(kvGet('openSet',[])), closedSet=new Set(kvGet('closedSet',[]));
+function saveGroupState(){ kvSet('openSet',[...openSet]); kvSet('closedSet',[...closedSet]); }
+function groupKey(it){
+  if(it.savedPath){ const i=it.savedPath.lastIndexOf('/'); return i<0?'（最外層）':it.savedPath.slice(0,i); }
+  return dirHandle?'（還沒存進資料夾）':(folderOf(it,kvGet('folder','target'),kvGet('useGroup',false))||'（不分資料夾）');
+}
+function isOpen(k){ if(openSet.has(k)) return true; if(closedSet.has(k)) return false; return items.length<=60 || (!!cur() && groupKey(cur())===k); }
+function matchQ(it,q){
+  const ql=q.toLowerCase(), zy=it.zy||'';
+  if([...q].every(c=>BOPO_RE.test(c)||c===' ')){ const qq=q.replace(/\s+/g,''); return zy.replace(/\s+/g,'').includes(qq)||(it.word||'').includes(qq)||(it.target||'')===qq; }
+  return (it.word||'').toLowerCase().includes(ql)||zy.includes(q)||(it.savedPath||'').toLowerCase().includes(ql)||(it.group||'').includes(q);
+}
+function rowEl(it){
+  const r=document.createElement('div'); r.className='item'+(it.id===curId?' cur':'')+(it.pend?' pend':''); r.dataset.id=it.id;
+  const has=hasRec(it);
+  const st=it.pend?'<span class="st no">🔴 還沒確認</span>':has?`<span class="st yes">✔ ${it.dur?it.dur.toFixed(1)+'秒':''}</span>`:'<span class="st no">還沒錄</span>';
+  r.innerHTML=`<span class="w">${esc(it.word||'—')}</span><span class="z">${esc(it.zy||'')}</span>`+st+
+    (has?`<button data-a="play" title="播放">▶</button><button data-a="edit" title="編輯音檔（剪輯、音量、去雜訊…）">✂</button><button data-a="redo" title="重做這個音檔（重新錄音，聽過確認後才覆蓋）">🔁</button>`:'')+
+    `<button data-a="info" title="改名／移動／複製">✎</button>`+(it.savedPath?`<button data-a="path" title="複製所在資料夾的路徑">📋</button>`:'')+`<button data-a="del" title="從電腦刪除">🗑</button>`;
+  return r;
+}
 function renderList(){
   const box=$('list'); box.innerHTML='';
-  const fo=kvGet('folder','target'), ug=kvGet('useGroup',false);
-  let arr=items.filter(x=> filter==='all' || (filter==='todo'?!x.audio:!!x.audio));
-  if(!arr.length){ box.innerHTML=`<div class="empty">${items.length?'這裡沒有語詞':'清單是空的，請先在 ① 輸入語詞'}</div>`; return; }
-  arr=sortItems(arr);
-  let last=null, frag=document.createDocumentFragment();
-  const counts={}; arr.forEach(x=>{ const f=folderOf(x,fo,ug); counts[f]=(counts[f]||0)+1; });
-  for(const it of arr){
-    const f=folderOf(it,fo,ug);
-    if(f!==last){ const h=document.createElement('div'); h.className='folder'; h.innerHTML=`📁 ${esc(f||'（不分資料夾）')} <span class="n">${counts[f]} 個</span>`; frag.appendChild(h); last=f; }
-    const r=document.createElement('div'); r.className='item'+(it.id===curId?' cur':''); r.dataset.id=it.id;
-    r.innerHTML=`<span class="w">${esc(it.word||'—')}</span><span class="z">${esc(it.zy)}</span>`+
-      (it.audio?`<span class="st yes">✔ ${it.dur.toFixed(1)}秒</span><button data-a="play" title="播放">▶</button><button data-a="edit" title="編輯音檔">✂</button><button data-a="dl" title="下載這個音檔">⬇</button>`:`<span class="st no">還沒錄</span>`)+
-      `<button data-a="del" title="刪除">🗑</button>`;
-    frag.appendChild(r);
+  const q=$('searchIn').value.trim();
+  let arr=items.filter(x=> filter==='all' || (filter==='todo'?!hasRec(x):hasRec(x)));
+  if(q) arr=arr.filter(x=>matchQ(x,q));
+  if(!arr.length){ box.innerHTML=`<div class="empty">${q?'找不到符合的音檔':items.length?'這裡沒有語詞':(dirHandle?'資料夾裡還沒有音檔。錄好並按「確認」就會出現在這裡。':'清單是空的，請先在 ① 輸入語詞，或到 ④ 選擇資料夾')}</div>`; return; }
+  const groups=new Map();
+  arr.forEach(x=>{ const k=q?'🔍 搜尋結果':groupKey(x); if(!groups.has(k)) groups.set(k,[]); groups.get(k).push(x); });
+  const keys=[...groups.keys()].sort((a,b)=>a<b?-1:a>b?1:0);
+  const frag=document.createDocumentFragment(); let shown=0;
+  for(const k of keys){
+    const list=groups.get(k).sort((a,b)=>(a.order||0)-(b.order||0)); const open=q?true:isOpen(k);
+    const h=document.createElement('div'); h.className='folder'; h.dataset.g=k; h.innerHTML=`<span class="arrow">${open?'▼':'▶'}</span>📁 ${esc(k)} <span class="n">${list.length} 個</span>`; frag.appendChild(h);
+    if(open) for(const it of list){ if(shown++>=400) break; frag.appendChild(rowEl(it)); }
   }
+  if(shown>400){ const n=document.createElement('div'); n.className='empty'; n.textContent='結果太多，只顯示前 400 個，請用搜尋縮小範圍'; frag.appendChild(n); }
   box.appendChild(frag);
   const c=box.querySelector('.item.cur'); if(c && renderList._scroll){ c.scrollIntoView({block:'nearest'}); renderList._scroll=false; }
 }
 $('list').addEventListener('click',async e=>{
+  const fh=e.target.closest('.folder');
+  if(fh){ const k=fh.dataset.g; if($('searchIn').value.trim()) return; if(isOpen(k)){ openSet.delete(k); closedSet.add(k); } else { closedSet.delete(k); openSet.add(k); } saveGroupState(); renderList(); return; }
   const row=e.target.closest('.item'); if(!row) return;
   const it=items.find(x=>x.id===row.dataset.id); if(!it) return;
   const a=e.target.dataset.a;
-  if(a==='play'){ playItem(it); return; }
-  if(a==='edit'){ openEdit(it); return; }
-  if(a==='dl'){ downloadBlob(new Blob([it.audio],{type:it.mime||'audio/wav'}), fileBase(it,kvGet('nameMode','word'))+'.'+(it.ext||'wav')); return; }
-  if(a==='del'){
-    if(!confirm(`要刪除「${it.word||it.zy}」${it.audio?'和它的錄音':''}嗎？`)) return;
-    const seq=seqList(); const i=seq.indexOf(it);
-    items=items.filter(x=>x!==it); await dbDel(it.id); if(it.savedPath&&dirReady()) removeFile(it.savedPath);
-    if(curId===it.id){ const n=seq[i+1]||seq[i-1]; curId=n&&n!==it?n.id:null; }
-    renderAll(); return;
-  }
+  if(a==='play'){ playItem(it,false,true); return; }
+  if(a==='edit'){ select(it.id); openEdit(it); return; }
+  if(a==='redo'){ startRedo(it); return; }
+  if(a==='info'){ openInfo(it); return; }
+  if(a==='path'){ copyPath(it); return; }
+  if(a==='del'){ deleteItem(it); return; }
   select(it.id);
 });
 $('filterTabs').addEventListener('click',e=>{ const b=e.target.closest('button'); if(!b) return; filter=b.dataset.f; [...$('filterTabs').children].forEach(x=>x.classList.toggle('on',x===b)); renderList(); });
+$('searchIn').addEventListener('input',renderList);
+$('searchClr').onclick=()=>{ $('searchIn').value=''; renderList(); };
+$('expAll').onclick=()=>{ closedSet.clear(); items.forEach(x=>openSet.add(groupKey(x))); saveGroupState(); renderList(); };
+$('colAll').onclick=()=>{ openSet.clear(); items.forEach(x=>closedSet.add(groupKey(x))); saveGroupState(); renderList(); };
+$('scanBtn').onclick=()=>scanFolder(true);
+
+let redoId=null;
+function startRedo(it){
+  if(recording) return;
+  if(!select(it.id)) return; redoId=it.id;
+  $('recCard').scrollIntoView({behavior:'smooth',block:'start'});
+  $('recStatus').textContent='🔁 重做：按紅色大圓鈕錄新的，聽過按「確認」才會覆蓋舊檔。';
+  toast('按紅色大圓鈕重錄；聽過按「確認」才會覆蓋舊檔',3500);
+}
+async function deleteItem(it){
+  const disk=!!it.savedPath;
+  const msg=disk
+    ? `⚠️ 要把「${it.word||it.zy}」從電腦刪除嗎？\n\n檔案：${dirHandle?dirHandle.name+'/':''}${it.savedPath}\n\n這會把資料夾裡的檔案永久刪掉，不會進資源回收筒，無法復原。\n\n確定要刪除請按「確定」。`
+    : `要刪除「${it.word||it.zy}」${it.audio?'和它的錄音':''}嗎？（只存在瀏覽器裡的，無法復原）`;
+  if(!confirm(msg)) return;
+  if(disk){ if(!(await ensureDirPerm(true))){ toast('需要允許存取資料夾才能刪除'); return; } await removeFile(it.savedPath); addLog('刪除',it,'已從電腦刪除'); }
+  const seq=seqList(); const i=seq.indexOf(it);
+  items=items.filter(x=>x!==it); await dbDel(it.id); if(disk) queueIndex();
+  if(curId===it.id){ const n=seq[i+1]||seq[i-1]; curId=n&&n!==it?n.id:null; }
+  renderAll(); toast(disk?'已從電腦刪除':'已刪除');
+}
+function copyPath(it){
+  const root=($('rootPath').value||'').trim(); const i=it.savedPath.lastIndexOf('/'); const dir=i<0?'':it.savedPath.slice(0,i);
+  const win=/^[A-Za-z]:|^\\\\/.test(root), sep=win?'\\':'/';
+  let full=root?root.replace(/[\\/]+$/,'')+(dir?sep+dir.replace(/\//g,sep):''):(dirHandle?dirHandle.name:'')+(dir?'/'+dir:'');
+  const name=it.savedPath.split('/').pop();
+  const done=()=>toast(`已複製資料夾路徑，檔名是「${name}」。貼到檔案總管網址列（Windows）或 Finder「前往資料夾」（Cmd+Shift+G）就能打開`+(root?'':'（還沒填完整路徑，目前只有資料夾名稱，可到 ④ 填）'),6000);
+  try{ navigator.clipboard.writeText(full).then(done,()=>{ prompt('請按 Ctrl+C 複製：',full); }); }catch(e){ prompt('請按 Ctrl+C 複製：',full); }
+}
+/* ---- 改名／移動／複製 ---- */
+let infoIt=null;
+function openInfo(it){
+  infoIt=it; $('inWord').value=it.word||''; $('inZy').value=it.zy||''; $('inTarget').value=it.target||'';
+  $('inPath').textContent=it.savedPath?'目前位置：'+(dirHandle?dirHandle.name+'/':'')+it.savedPath:'（還沒存進資料夾）';
+  $('infoDlg').showModal();
+}
+$('inCancel').onclick=()=>$('infoDlg').close();
+$('inWord').addEventListener('change',()=>{ const w=hanOnly($('inWord').value); if(w){ $('inZy').value=segsToZy(lookupSegments(w)); } });
+function readInfo(){ const w=hanOnly($('inWord').value); let z=normZy($('inZy').value); if(!z&&w) z=segsToZy(lookupSegments(w)); return {word:w,zy:z,target:$('inTarget').value.trim()}; }
+$('inSave').onclick=()=>{
+  const it=infoIt; if(!it) return; const v=readInfo();
+  if(!v.word&&!v.zy){ toast('語詞不能是空的'); return; }
+  const tChanged=v.target!==(it.target||''), nChanged=v.word!==it.word||v.zy!==it.zy;
+  it.word=v.word; it.zy=v.zy; it.target=v.target; it.wordAuto=false; if(nChanged){ it.segs=null; it._rename=true; } if(tChanged) it._reclass=true;
+  $('infoDlg').close(); touchItem(it);
+};
+$('inCopy').onclick=async()=>{
+  const it=infoIt; if(!it) return; const v=readInfo(); if(!v.word&&!v.zy){ toast('語詞不能是空的'); return; }
+  let audio; try{ audio=await getAudio(it,true); }catch(e){ toast('讀不到原本的音檔：'+e.message); return; }
+  if(!audio){ toast('這個語詞還沒有錄音，無法複製'); return; }
+  const n={id:uid(),word:v.word,zy:v.zy,target:v.target,group:it.group||'',segs:null,audio,mime:it.mime||'audio/wav',ext:it.ext||'wav',dur:it.dur||0,order:items.reduce((m,x)=>Math.max(m,x.order||0),0)+1,created:Date.now(),modified:Date.now(),src:'local'};
+  items.push(n); $('infoDlg').close();
+  if(dirReady()){ const ok=await saveToDisk(n,true,{reclass:true,write:true}); if(ok){ addLog('複製',n,'來源：'+(it.savedPath||'')); toast('已另存一份：'+n.savedPath); } else { await dbPut(n); toast('複製失敗，已暫存在瀏覽器'); } }
+  else { await dbPut(n); toast('已另存一份（還沒選資料夾，暫存在瀏覽器）'); }
+  renderAll();
+};
+/* ---- 目前這筆 ---- */
 function pruneBlank(){
-  const bl=items.filter(x=>!x.word&&!x.zy&&!x.audio&&x.id!==curId);
+  const bl=items.filter(x=>!x.word&&!x.zy&&!hasRec(x)&&!x.pend&&x.id!==curId);
   if(bl.length){ items=items.filter(x=>!bl.includes(x)); bl.forEach(x=>dbDel(x.id)); }
 }
-function confirmItem(it,silent){
-  if(!it||!it.audio||it.confirmed!==false) return true;
-  if(!it.word&&!it.zy){ if(!silent){ toast('請先輸入語詞'); $('wordEdit').focus(); } return false; }
-  it.confirmed=true; dbPut(it); saveToDisk(it); return true;
+function discardPend(it){
+  it.pend=null; it.alts=[]; if(redoId===it.id) redoId=null;
+  if(!hasRec(it)&&it.wordAuto){ it.word=''; it.zy=''; it.segs=null; it.wordAuto=false; }
+  pruneBlank(); $('recStatus').textContent='已丟掉這個錄音（沒有存）。'; renderAll();
 }
-function select(id){ if(recording) return; const old=cur(); if(old&&old.id!==id) confirmItem(old,true); curId=id; pruneBlank(); renderList._scroll=true; $('recStatus').textContent=''; renderAll(); }
+async function confirmItem(it,silent){
+  if(!it||!it.pend) return true;
+  if(!it.word&&!it.zy){ if(!silent){ toast('請先輸入語詞'); $('wordEdit').focus(); } return false; }
+  const redo=hasRec(it);
+  it.audio=it.pend.audio; it.dur=it.pend.dur; it.mime='audio/wav'; it.ext='wav'; it.pend=null; it.alts=[]; it.wordAuto=false; it.listed=true;
+  it.modified=Date.now(); it.created=it.created||it.modified; if(redoId===it.id) redoId=null;
+  let ok=false;
+  if(dirHandle&&FS_OK&&$('optAutoSave').checked){
+    ok=await saveToDisk(it,true,{write:true,rename:true});
+    if(ok) addLog(redo?'重錄並覆蓋':'新增錄音',it); else toast('⚠️ 沒能存進資料夾，先暫存在瀏覽器；請到 ④ 重新允許存取');
+  }
+  if(!ok){ it.src=it.src==='disk'?'disk':'local'; if(it.src!=='disk') await dbPut(it); }
+  renderAll(); return true;
+}
+function select(id){
+  if(recording) return false;
+  const old=cur();
+  if(old&&old.id!==id&&old.pend){ if(!confirm('這個錄音還沒按「確認」，離開就不會存。\n\n要丟掉它嗎？（按「取消」可以留在這裡繼續）')) return false; old.pend=null; old.alts=[]; if(!hasRec(old)&&old.wordAuto){ old.word=''; old.zy=''; } }
+  if(redoId&&redoId!==id) redoId=null;
+  curId=id; pruneBlank(); renderList._scroll=true; $('recStatus').textContent=''; renderAll(); return true;
+}
 function newDraft(){
-  const it={id:uid(),word:'',zy:'',group:$('groupIn').value.trim(),target:$('targetIn0').value.trim(),segs:null,audio:null,mime:'',ext:'',dur:0,confirmed:true,order:items.reduce((m,x)=>Math.max(m,x.order||0),0)+1,t:Date.now()};
-  items.push(it); select(it.id); return it;
+  const it={id:uid(),word:'',zy:'',group:$('groupIn').value.trim(),target:$('targetIn0').value.trim(),segs:null,audio:null,mime:'',ext:'',dur:0,order:items.reduce((m,x)=>Math.max(m,x.order||0),0)+1,t:Date.now(),src:'local'};
+  items.push(it); if(!select(it.id)){ items=items.filter(x=>x!==it); return null; } return it;
 }
 function move(d){
   if(recording) return;
@@ -589,23 +737,25 @@ function move(d){
   let i=seq.findIndex(x=>x.id===curId);
   i=Math.max(0,Math.min(seq.length-1,i+d)); select(seq[i].id);
 }
-function nextTodo(){
+async function nextTodo(){
   if(recording) return;
-  const c=cur(); if(c&&!confirmItem(c)) return;
-  if($('optFree').checked){ newDraft(); $('recStatus').textContent=''; return; }
+  const c=cur(); let wasRedo=false;
+  if(c&&c.pend){ wasRedo=hasRec(c); if(!(await confirmItem(c))) return; }
+  if(wasRedo){ renderAll(); toast('✔ 已確認並覆蓋舊檔'); return; }
+  if($('optFree').checked){ newDraft(); $('recStatus').textContent=c&&c.word?`✔ 「${c.word}」已存。可以錄下一個了。`:''; return; }
   const seq=seqList(); if(!seq.length) return;
   const i=seq.findIndex(x=>x.id===curId);
-  const after=seq.slice(i+1).find(x=>!x.audio) || seq.slice(0,i).find(x=>!x.audio);
+  const after=seq.slice(i+1).find(x=>!hasRec(x)) || seq.slice(0,i).find(x=>!hasRec(x));
   if(after) select(after.id);
   else if(i<seq.length-1) select(seq[i+1].id);
   else { renderAll(); toast('🎉 全部都錄好了！', 3000); }
 }
 $('wordEdit').addEventListener('change',()=>{ const it=cur(); if(it) setWord(it,$('wordEdit').value); });
 $('wordEdit').addEventListener('keydown',e=>{ if(e.key==='Enter'){ e.preventDefault(); $('wordEdit').blur(); } });
-$('targetEdit').addEventListener('change',()=>{ const it=cur(); if(!it) return; it.target=$('targetEdit').value.trim(); touchItem(it); });
+$('targetEdit').addEventListener('change',()=>{ const it=cur(); if(!it) return; it.target=$('targetEdit').value.trim(); it._reclass=true; touchItem(it); });
 $('zyEdit').addEventListener('change',()=>{
   const it=cur(); if(!it) return;
-  it.zy=normZy($('zyEdit').value); $('zyEdit').value=it.zy; touchItem(it); toast('注音已更新');
+  it.zy=normZy($('zyEdit').value); $('zyEdit').value=it.zy; it._rename=true; touchItem(it); toast('注音已更新');
 });
 $('zyEdit').addEventListener('keydown',e=>{ if(e.key==='Enter'){ e.preventDefault(); $('zyEdit').blur(); } });
 
@@ -623,7 +773,8 @@ async function ensureMic(){
 async function startRec(){
   if(dirHandle && !dirOK && FS_OK) await ensureDirPerm(true);
   let it=cur();
-  if(!it || ($('optFree').checked && (it.audio||it.word))) it=newDraft();
+  const blank=!!it&&!it.word&&!it.zy&&!hasRec(it)&&!it.pend;
+  if(!it || ($('optFree').checked && redoId!==it.id && !blank && !it.pend)){ it=newDraft(); if(!it) return; }
   try{
     if(!actx){ const AC=window.AudioContext||window.webkitAudioContext; actx=new AC(); }
     if(actx.state==='suspended') await actx.resume();
@@ -669,15 +820,13 @@ async function stopRec(){
   const out=resample(pcm,rate,OUT_RATE);
   const wav=encodeWav(out,OUT_RATE);
   const it=cur();
-  it.audio=wav; it.mime='audio/wav'; it.ext='wav'; it.dur=out.length/OUT_RATE; it.t=Date.now();
-  await dbPut(it);
-  $('recStatus').textContent=`✔ 錄好了（${it.dur.toFixed(1)} 秒）。`+(SR?'正在辨識語詞…':'不滿意可以再按紅鈕重錄。');
+  it.pend={audio:wav,dur:out.length/OUT_RATE};
+  $('recStatus').textContent=`✔ 錄好了（${it.pend.dur.toFixed(1)} 秒）。`+(SR?'正在辨識語詞…':'請聽一聽，OK 再按「確認」。');
   renderAll();
-  if(it.word && it.confirmed!==false) saveToDisk(it);
-  if($('optAutoplay').checked){ await playItem(it, true); }
+  const playP=$('optAutoplay').checked?playItem(it,true):null;
   const alts=await heardP;
   await applyHeard(it, alts);
-  if($('optAutoNext').checked && it.confirmed!==false){ nextTodo(); }
+  if(playP) await playP;
 }
 function trimSilence(pcm,rate){
   const win=Math.floor(rate*0.01); const n=Math.floor(pcm.length/win); const rms=new Float32Array(n); let mx=0;
@@ -748,10 +897,12 @@ function micError(e){
   showBanner(msg,'err'); $('recStatus').innerHTML='⚠️ 麥克風不能用，請看上方的說明';
 }
 let curAudio=null;
-function playItem(it, wait){
-  if(!it||!it.audio) return Promise.resolve();
+async function playItem(it, wait, committedOnly){
+  if(!it) return;
+  let ab; try{ ab=await getAudio(it,!!committedOnly); }catch(e){ toast('讀不到音檔：'+(e.message||e)); return; }
+  if(!ab) return;
   if(curAudio){ curAudio.pause(); URL.revokeObjectURL(curAudio.src); }
-  const url=URL.createObjectURL(new Blob([it.audio],{type:it.mime||'audio/wav'}));
+  const url=URL.createObjectURL(new Blob([ab],{type:(it.pend&&!committedOnly)?'audio/wav':(it.mime||'audio/wav')}));
   const a=new Audio(url); curAudio=a;
   return new Promise(res=>{ a.onended=a.onerror=()=>res(); a.play().catch(()=>res()); if(!wait) res(); });
 }
@@ -763,7 +914,7 @@ $('addBtn').onclick=addWords;
 $('wordsIn').addEventListener('keydown',e=>{ if(e.key==='Enter' && (e.ctrlKey||e.metaKey)){ e.preventDefault(); addWords(); } });
 document.addEventListener('keydown',e=>{
   const tag=(e.target.tagName||'').toLowerCase();
-  if(tag==='textarea'||tag==='input'||tag==='select'||$('helpDlg').open||$('editDlg').open) return;
+  if(tag==='textarea'||tag==='input'||tag==='select'||$('helpDlg').open||$('editDlg').open||$('infoDlg').open||$('logDlg').open) return;
   if(e.isComposing) return;
   if(e.code==='Space'){ e.preventDefault(); if(!e.repeat) $('recBtn').click(); }
   else if(e.key==='Enter'){ e.preventDefault(); nextTodo(); }
@@ -809,36 +960,36 @@ function srNote(){
 async function applyHeard(it, alts){
   alts=[...new Set((alts||[]).map(hanOnly).filter(Boolean))];
   it.alts=alts;
-  const pending=!it.word || it.confirmed===false;
-  if(pending){
-    it.confirmed=false;
+  const auto=!it.word || it.wordAuto;
+  if(auto){
     if(alts.length){
-      it.word=alts[0]; it.segs=lookupSegments(it.word); it.zy=segsToZy(it.segs);
-      $('recStatus').innerHTML='✔ 錄好了。系統聽到的是「<b>'+esc(it.word)+'</b>」，請看下方黃框確認。';
+      it.word=alts[0]; it.wordAuto=true; it.segs=lookupSegments(it.word); it.zy=segsToZy(it.segs);
+      $('recStatus').innerHTML='✔ 錄好了。系統聽到的是「<b>'+esc(it.word)+'</b>」，請聽過後看下方黃框確認。';
     }else{
       $('recStatus').innerHTML='✔ 錄好了，但沒有辨識出文字'+srNote()+'。請在上面的大框打上語詞。';
     }
   }else{
-    $('recStatus').textContent=`✔ 錄好了（${it.dur.toFixed(1)} 秒）。不滿意可以再按紅鈕重錄。`;
+    $('recStatus').innerHTML=`✔ 錄好了（${it.pend.dur.toFixed(1)} 秒）。聽過覺得可以，請按「確認」才會存。`+(alts.length&&alts[0]!==it.word?`<br>🎧 系統聽到的是「${esc(alts[0])}」，和語詞「${esc(it.word)}」不一樣，請確認有沒有唸錯。`:'');
   }
   await dbPut(it); renderAll();
-  if(pending && !alts.length) setTimeout(()=>{ if(!recording) $('wordEdit').focus(); },50);
+  if(auto && !alts.length) setTimeout(()=>{ if(!recording) $('wordEdit').focus(); },50);
 }
 
 /* ===================== 直接存到資料夾 ===================== */
 const FS_OK=('showDirectoryPicker' in window);
-let dirHandle=null, dirOK=false;
+let dirHandle=null, dirOK=false, scanDone=false, scanning=false, lastScan=0;
 const dirReady=()=>!!(FS_OK&&dirHandle&&dirOK);
 const idbKvPut=(k,v)=>tx('kv','readwrite',s=>s.put(v,k)).catch(()=>{});
 const idbKvGet=k=>tx('kv','readonly',s=>s.get(k)).catch(()=>null);
 function updateDiskUI(){
   const nm=$('dirName'), line=$('diskLine');
   $('reauthBtn').hidden=!(FS_OK&&dirHandle&&!dirOK);
-  $('pickDirBtn').disabled=!FS_OK; $('syncBtn').disabled=!dirReady(); $('optAutoSave').disabled=!FS_OK;
-  if(!FS_OK){ nm.textContent='⚠️ 這個瀏覽器（例如 Safari）不能直接存進資料夾，請改用 Chrome 或 Edge；或使用下方的 zip 下載。'; line.textContent=''; return; }
-  if(!dirHandle){ nm.textContent='還沒選擇資料夾'; line.textContent='💾 還沒選存放資料夾：錄音只存在瀏覽器裡（請到 ④ 選資料夾，或用 zip 下載）'; return; }
+  $('pickDirBtn').disabled=!FS_OK; $('syncBtn').disabled=!dirReady(); $('optAutoSave').disabled=!FS_OK; $('scanBtn').disabled=!(FS_OK&&dirHandle);
+  if(!FS_OK){ nm.textContent='⚠️ 這個瀏覽器（例如 Safari）不能直接存進資料夾，請改用 Chrome 或 Edge；或使用下方的 zip 下載。'; line.textContent=''; $('scanInfo').textContent='這個瀏覽器不能讀取資料夾，清單只有瀏覽器裡的錄音。'; return; }
+  if(!dirHandle){ nm.textContent='還沒選擇資料夾'; line.textContent='💾 還沒選存放資料夾：錄音只存在瀏覽器裡（請到 ④ 選資料夾，或用 zip 下載）'; $('scanInfo').textContent='還沒選資料夾（到 ④ 選一個，之後每次打開都會掃描它）。'; return; }
   nm.textContent='📁 '+dirHandle.name+(dirOK?'　✔ 已連接':'　（需要重新允許存取，請按右邊綠色按鈕）');
-  line.textContent=dirOK?($('optAutoSave').checked?'💾 錄好會自動存到：📁 '+dirHandle.name:'💾 已選資料夾，但「自動存入」沒打勾'):'💾 資料夾需要重新允許存取（到 ④ 按「重新允許存取」）';
+  line.textContent=dirOK?($('optAutoSave').checked?'💾 按「確認」後會存到：📁 '+dirHandle.name:'💾 已選資料夾，但「自動存入」沒打勾'):'💾 資料夾需要允許存取（到 ④ 按「重新允許存取」，或按 ③ 的「重新掃描資料夾」）';
+  if(!dirOK) $('scanInfo').textContent='👆 要讀取「'+dirHandle.name+'」裡的音檔，請按「🔄 重新掃描資料夾」，並在 Chrome 跳出的視窗按「允許」。';
 }
 async function ensureDirPerm(ask){
   if(!dirHandle) return false;
@@ -852,22 +1003,128 @@ async function ensureDirPerm(ask){
 async function subDir(parts,create){
   let d=dirHandle; for(const part of parts){ if(!part) continue; d=await d.getDirectoryHandle(part,{create}); } return d;
 }
+async function fileHandleOf(path){ const parts=path.split('/'); const name=parts.pop(); const d=await subDir(parts,false); return d.getFileHandle(name); }
+async function fileExists(path){ try{ await fileHandleOf(path); return true; }catch(e){ return false; } }
 async function removeFile(path){
   try{ const parts=path.split('/'); const name=parts.pop(); const d=await subDir(parts,false); await d.removeEntry(name); }catch(e){}
 }
-async function saveToDisk(it,force){
-  if(!FS_OK||!dirHandle||!it||!it.audio) return false;
+async function getAudio(it,committedOnly){
+  if(!committedOnly && it.pend) return it.pend.audio;
+  if(it.audio) return it.audio;
+  if(it.savedPath && dirHandle){
+    if(!dirOK && !(await ensureDirPerm(true))) throw new Error('需要先允許存取資料夾');
+    const fh=await fileHandleOf(it.savedPath); const f=await fh.getFile(); it.audio=await f.arrayBuffer();
+    if(!it.dur) it.dur=await audioDur(it.audio,it.mime||'audio/wav');
+    return it.audio;
+  }
+  return null;
+}
+async function loadAllAudio(list){
+  let n=0; for(const it of list){ if(!it.audio&&it.savedPath){ try{ await getAudio(it,true); }catch(e){} if(++n%10===0) toast(`讀取音檔中… ${n}`,1200); } }
+}
+/* ---- 日誌與索引 ---- */
+let LOG=[], idxTimer=0;
+function addLog(action,it,note){ LOG.push({t:new Date().toISOString(),action,word:it?it.word||'':'',zy:it?it.zy||'':'',path:it?it.savedPath||'':'',note:note||''}); if(LOG.length>5000) LOG.splice(0,LOG.length-5000); queueIndex(); }
+function queueIndex(){ if(!dirHandle||!scanDone) return; clearTimeout(idxTimer); idxTimer=setTimeout(writeIndex,900); }
+async function writeTextFile(name,text){ const fh=await dirHandle.getFileHandle(name,{create:true}); const w=await fh.createWritable(); await w.write(new Blob([text])); await w.close(); }
+function logCsv(){ const rows=[['時間','動作','語詞','注音','檔案位置','備註'].join(',')]; LOG.forEach(l=>rows.push([new Date(l.t).toLocaleString('zh-TW',{hour12:false}),l.action,l.word,l.zy,l.path,l.note].map(csvCell).join(','))); return '\ufeff'+rows.join('\r\n'); }
+async function writeIndex(){
+  if(!dirReady()||!scanDone) return;
+  try{
+    const idx={version:1,saved:new Date().toISOString(),items:{},log:LOG};
+    items.filter(x=>x.src==='disk'&&x.savedPath).forEach(x=>{ idx.items[x.savedPath]={word:x.word,zy:x.zy,target:x.target||'',group:x.group||'',created:x.created||0,modified:x.modified||0}; });
+    await writeTextFile('_索引.json',JSON.stringify(idx));
+    await writeTextFile('生檔日誌.csv',logCsv());
+  }catch(e){ console.warn('index',e); }
+}
+function showLog(){
+  const rows=LOG.slice().reverse().slice(0,500).map(l=>`<tr><td>${esc(new Date(l.t).toLocaleString('zh-TW',{hour12:false}))}</td><td>${esc(l.action)}</td><td>${esc(l.word)}</td><td>${esc(l.path)}${l.note?'<br><small>'+esc(l.note)+'</small>':''}</td></tr>`).join('');
+  $('logBody').innerHTML=LOG.length?`<table class="log"><tr><th>時間</th><th>動作</th><th>語詞</th><th>檔案位置</th></tr>${rows}</table>`+(LOG.length>500?'<div class="hint">只顯示最近 500 筆，完整內容請下載 CSV。</div>':''):'<div class="empty">還沒有紀錄</div>';
+  $('logDlg').showModal();
+}
+$('logBtn').onclick=showLog; $('logCsv').onclick=()=>downloadBlob(new Blob([logCsv()],{type:'text/csv'}),'生檔日誌_'+stamp()+'.csv');
+/* ---- 掃描 ---- */
+function parseName(base){
+  base=base.replace(/\(\d+\)$/,'');
+  const us=base.indexOf('_');
+  if(us>0 && BOPO_RE.test(base.slice(us+1))) return {word:hanOnly(base.slice(0,us)),zy:normZy(base.slice(us+1))};
+  if(BOPO_RE.test(base)&&!HAN_RE.test(base)) return {word:'',zy:normZy(base)};
+  return {word:hanOnly(base)||base,zy:null};
+}
+async function scanFolder(manual){
+  if(!dirHandle||scanning) return;
+  if(!(await ensureDirPerm(true))){ if(manual) toast('需要按「允許」才能讀取資料夾'); return; }
+  scanning=true; $('scanInfo').textContent='🔄 掃描資料夾中…';
+  try{
+    let idx={items:{},log:[]}; try{ const fh=await dirHandle.getFileHandle('_索引.json'); idx=JSON.parse(await (await fh.getFile()).text()); }catch(e){}
+    if(!scanDone) LOG=Array.isArray(idx.log)?idx.log:[];
+    const found=[];
+    async function walk(dir,prefix){ for await(const [name,h] of dir.entries()){ if(name.startsWith('.')||name.startsWith('_')) continue; if(h.kind==='directory') await walk(h,prefix+name+'/'); else { const ext=(name.split('.').pop()||'').toLowerCase(); if(AUDIO_EXT[ext]) found.push({path:prefix+name,h,ext}); } } }
+    await walk(dirHandle,'');
+    found.sort((a,b)=>a.path<b.path?-1:a.path>b.path?1:0);
+    const old=new Map(items.filter(x=>x.src==='disk').map(x=>[x.savedPath,x]));
+    const legacy=new Map(items.filter(x=>x.src!=='disk'&&x.savedPath).map(x=>[x.savedPath,x]));
+    const foundSet=new Set(found.map(f=>f.path));
+    const keep=items.filter(x=>x.src!=='disk'&&!(x.savedPath&&foundSet.has(x.savedPath)));
+    keep.forEach(x=>{ if(x.savedPath&&!foundSet.has(x.savedPath)) x.savedPath=''; });
+    legacy.forEach((x,k)=>{ if(foundSet.has(k)) dbDel(x.id); });
+    const disk=[]; let order=0, added=0, n=0;
+    for(const f of found){
+      let it=old.get(f.path);
+      if(it){ it.order=++order; disk.push(it); continue; }
+      const file=await f.h.getFile(); const m=idx.items&&idx.items[f.path]; const lg=legacy.get(f.path);
+      let word,zy,target='',group='',created=file.lastModified;
+      if(m){ word=m.word; zy=m.zy; target=m.target||''; group=m.group||''; created=m.created||created; }
+      else if(lg){ word=lg.word; zy=lg.zy; target=lg.target||''; group=lg.group||''; created=lg.created||created; }
+      else{
+        const pn=parseName(f.path.split('/').pop().replace(/\.[^.]+$/,'')); word=pn.word; zy=pn.zy||segsToZy(lookupSegments(word));
+        const seg=f.path.includes('/')?f.path.split('/').slice(-2,-1)[0]:''; const sym=(seg.match(/^\d+\s+(.+)$/)||[,seg])[1]; if(sym&&[...sym].every(c=>ALLSYM.includes(c))) target=sym;
+        added++;
+      }
+      let dur=0; if(f.ext==='wav'){ try{ const h=new DataView(await file.slice(0,44).arrayBuffer()); dur=(file.size-44)/(h.getUint32(24,true)*h.getUint16(32,true)); }catch(e){} }
+      it={id:uid(),src:'disk',word,zy,target,group,segs:null,audio:null,mime:AUDIO_EXT[f.ext],ext:f.ext,dur,created,modified:file.lastModified,savedPath:f.path,order:++order,listed:true};
+      disk.push(it);
+      if(++n%40===0) $('scanInfo').textContent='🔄 掃描資料夾中… '+n;
+    }
+    items=[...keep,...disk];
+    scanDone=true; lastScan=Date.now();
+    if(added) addLog('掃描發現新檔案',null,`${added} 個（原本不是這個工具存的，已用檔名加入清單）`);
+    queueIndex();
+    if(!items.some(x=>x.id===curId)){ const seq=seqList(); curId=(seq.find(x=>!hasRec(x))||seq[0]||{}).id||null; }
+    $('scanInfo').textContent=`📁 ${dirHandle.name}：共 ${disk.length} 個音檔　｜　上次掃描 ${new Date(lastScan).toLocaleTimeString('zh-TW',{hour12:false})}`+(added?`　｜　新發現 ${added} 個`:'');
+    renderAll(); if(manual) toast(`掃描完成：${disk.length} 個音檔`);
+  }catch(e){ console.error(e); $('scanInfo').textContent='⚠️ 掃描失敗：'+(e.message||e); }
+  scanning=false;
+}
+/* ---- 存檔 ---- */
+async function saveToDisk(it,force,opts){
+  opts=opts||{};
+  if(!FS_OK||!dirHandle||!it) return false;
   if(!force && !$('optAutoSave').checked) return false;
+  let audio; try{ audio=await getAudio(it,true); }catch(e){ return false; }
+  if(!audio) return false;
   if(!(await ensureDirPerm(false))){ $('diskLine').textContent='⚠️ 資料夾需要重新允許，音檔暫時只存在瀏覽器裡（到 ④ 按「重新允許存取」）'; return false; }
   try{
-    const f=folderOf(it,$('optFolder').value,$('optGroup').checked), base=fileBase(it,$('optName').value), ext=it.ext||'wav';
+    const ext=it.ext||'wav', old=it.savedPath||'';
+    const oldName=old.split('/').pop(), oldExt=(oldName.split('.').pop()||'').toLowerCase();
+    const keepName=!!old && !it._rename && !opts.rename && oldExt===ext;
+    const keepDir=!!old && !it._reclass && !opts.reclass;
+    const dir=keepDir?(old.lastIndexOf('/')<0?'':old.slice(0,old.lastIndexOf('/'))):folderOf(it,$('optFolder').value,$('optGroup').checked);
+    const base=fileBase(it,$('optName').value);
+    it._rename=false; it._reclass=false;
+    const pre=dir?dir+'/':''; const fname=keepName?oldName:base+'.'+ext;
+    const stem=fname.replace(/\.[^.]+$/,'');
     const taken=new Set(items.filter(x=>x!==it&&x.savedPath).map(x=>x.savedPath));
-    const pre=f?f+'/':''; let path=pre+base+'.'+ext, k=2; while(taken.has(path)) path=pre+base+`(${k++}).`+ext;
-    if(it.savedPath && it.savedPath!==path) await removeFile(it.savedPath);
+    let path=pre+fname, k=2;
+    while(path!==old && (taken.has(path) || await fileExists(path))) path=pre+stem+`(${k++}).`+ext;
+    if(path===old && !opts.write) return true;
     const parts=path.split('/'); const name=parts.pop();
     const d=await subDir(parts,true); const fh=await d.getFileHandle(name,{create:true});
-    const w=await fh.createWritable(); await w.write(it.audio); await w.close();
-    it.savedPath=path; dbPut(it);
+    const w=await fh.createWritable(); await w.write(audio); await w.close();
+    if(old && old!==path) await removeFile(old);
+    const wasLocal=it.src!=='disk'; it.savedPath=path; it.src='disk'; it.modified=Date.now(); it.created=it.created||it.modified;
+    if(wasLocal) dbDel(it.id);
+    queueIndex();
     $('diskLine').textContent='💾 已存到：📁 '+dirHandle.name+'/'+path;
     return true;
   }catch(e){ console.error(e); $('diskLine').textContent='⚠️ 存進資料夾失敗：'+(e.message||e); return false; }
@@ -875,30 +1132,24 @@ async function saveToDisk(it,force){
 async function pickDir(){
   try{
     const h=await window.showDirectoryPicker({id:'zyrec',mode:'readwrite'});
-    dirHandle=h; dirOK=true; await idbKvPut('dir',h);
-    items.forEach(x=>{ x.savedPath=''; dbPut(x); });
-    updateDiskUI();
-    const n=items.filter(x=>x.audio&&x.confirmed!==false).length;
-    if(n && confirm(`要把已經錄好的 ${n} 個音檔，也存進「${h.name}」嗎？`)) await syncAll();
-    else toast('已選好資料夾，之後錄好的音檔會自動存進去');
+    dirHandle=h; dirOK=true; scanDone=false; await idbKvPut('dir',h);
+    updateDiskUI(); await scanFolder(true);
+    const n=items.filter(x=>x.src!=='disk'&&x.audio).length;
+    if(n && confirm(`瀏覽器裡還有 ${n} 個錄音沒存進資料夾，要現在存進「${h.name}」嗎？`)) await syncAll();
   }catch(e){ if(e&&e.name!=='AbortError') showBanner('⚠️ 無法選擇資料夾：'+esc(e.message||e),'err'); }
 }
 async function syncAll(){
   if(!(await ensureDirPerm(true))){ toast('需要允許存取資料夾'); return; }
-  const rec=sortItems(items.filter(x=>x.audio&&x.confirmed!==false));
-  let ok=0; for(let i=0;i<rec.length;i++){ if(await saveToDisk(rec[i],true)) ok++; if(i%5===0) toast(`存入中… ${i+1} / ${rec.length}`,1500); }
-  try{
-    const rows=[['語詞','注音','要教的符號','分組','檔案位置','秒數'].join(',')];
-    rec.forEach(it=>rows.push([it.word,it.zy,it.target||'',it.group||'',it.savedPath||'',it.dur.toFixed(2)].map(csvCell).join(',')));
-    const fh=await dirHandle.getFileHandle('清單.csv',{create:true}); const w=await fh.createWritable(); await w.write(new Blob(['﻿'+rows.join('\r\n')],{type:'text/csv'})); await w.close();
-  }catch(e){}
-  toast(`已存入 ${ok} 個音檔到「${dirHandle.name}」`,3500);
+  const rec=items.filter(x=>x.src!=='disk'&&x.audio&&!x.pend);
+  if(!rec.length){ toast('沒有需要存的錄音'); return; }
+  let ok=0; for(let i=0;i<rec.length;i++){ if(await saveToDisk(rec[i],true,{write:true,reclass:true,rename:true})){ ok++; addLog('存入資料夾',rec[i]); } if(i%5===0) toast(`存入中… ${i+1} / ${rec.length}`,1500); }
+  renderAll(); toast(`已存入 ${ok} 個音檔到「${dirHandle.name}」`,3500);
 }
 $('pickDirBtn').onclick=pickDir;
-$('reauthBtn').onclick=async()=>{ if(await ensureDirPerm(true)) toast('已重新連接資料夾'); };
+$('reauthBtn').onclick=()=>scanFolder(true);
 $('syncBtn').onclick=syncAll;
 $('optAutoSave').addEventListener('change',()=>{ kvSet('optAutoSave',$('optAutoSave').checked); updateDiskUI(); });
-
+$('rootPath').addEventListener('change',()=>kvSet('rootPath',$('rootPath').value.trim()));
 
 /* ===================== 音檔編輯 ===================== */
 const ED={it:null,buf:null,rate:22050,undo:[],sel:null,noise:null,src:null,orig:false};
@@ -997,12 +1248,14 @@ async function decodeToMono(ab){
   for(let c=0;c<ch;c++){ const d=b.getChannelData(c); for(let i=0;i<n;i++) out[i]+=d[i]/ch; } return {pcm:out,rate:b.sampleRate};
 }
 async function openEdit(it){
-  if(!it||!it.audio||recording) return;
-  try{ const d=await decodeToMono(it.audio); ED.it=it; ED.buf=d.pcm; ED.rate=d.rate; }
+  if(!it||recording) return;
+  let ab; try{ ab=await getAudio(it,false); }catch(e){ toast('讀不到音檔：'+(e.message||e)); return; }
+  if(!ab){ toast('這個語詞還沒有錄音'); return; }
+  try{ const d=await decodeToMono(ab); ED.it=it; ED.buf=d.pcm; ED.rate=d.rate; ED.initial=d.pcm.slice(); ED.initialRate=d.rate; }
   catch(e){ toast('這個音檔無法編輯：'+(e.message||e)); return; }
   ED.undo=[]; ED.sel=null; ED.mA=ED.mB=null; ED.cursor=null; ED.pos=null; ED.noise=null; $('edNzHint').textContent='預設自動找最安靜的地方當雜音樣本。';
-  $('edTitle').textContent=(it.word||it.zy||'')+(it.zy&&it.word?'　'+it.zy:''); $('edGain').value=100; $('edGainV').textContent='100%'; $('edSpd').value=100;
-  $('edOrig').disabled=!it.orig; $('editDlg').showModal(); edDraw();
+  $('edTitle').textContent=(it.word||it.zy||'')+(it.zy&&it.word?'　'+it.zy:'')+(it.pend?'（新錄音，還沒存）':''); $('edGain').value=100; $('edGainV').textContent='100%'; $('edSpd').value=100;
+  $('edOrig').disabled=false; $('editDlg').showModal(); edDraw();
 }
 function edPlay(){
   edStop(); if(!actx){ const AC=window.AudioContext||window.webkitAudioContext; actx=new AC(); } if(actx.state==='suspended') actx.resume();
@@ -1052,23 +1305,27 @@ function edMark(which){
     $('edSpdGo').disabled=true; setTimeout(()=>{ try{ const seg=ED.buf.slice(r.a,r.b); const keep=document.querySelector('input[name=edMode]:checked').value==='keep';
       const ns=keep?wsola(seg,s):resample(seg,ED.rate,ED.rate/s); edSet(edReplace(r,ns)); $('edSpd').value=100; }catch(e){ ED.undo.pop(); toast('失敗：'+e.message); } $('edSpdGo').disabled=false; edSpdLabel(); },30); };
   $('edUndo').onclick=()=>{ if(ED.undo.length){ edSet(ED.undo.pop()); } };
-  $('edOrig').onclick=async()=>{ const it=ED.it; if(!it||!it.orig) return; try{ const d=await decodeToMono(it.orig); edPush(); ED.rate=d.rate; edSet(d.pcm); toast('已還原成最原始的錄音（按「儲存修改」才會生效）'); }catch(e){ toast('還原失敗'); } };
+  $('edOrig').onclick=()=>{ if(!ED.initial) return; edPush(); ED.rate=ED.initialRate; edSet(ED.initial.slice()); toast('已還原成剛打開時的樣子（按「儲存修改」才會生效）'); };
   $('edCancel').onclick=()=>{ if(ED.undo.length && !confirm('有修改還沒存，要放棄嗎？')) return; edStop(); $('editDlg').close(); };
   $('editDlg').addEventListener('cancel',e=>{ if(ED.undo.length && !confirm('有修改還沒存，要放棄嗎？')) e.preventDefault(); edStop(); });
   $('edSave').onclick=async()=>{
     const it=ED.it; if(!it) return; edStop();
-    if(!it.orig){ it.orig=it.audio; it.origExt=it.ext||'wav'; }
-    let pk=0; for(const v of ED.buf) pk=Math.max(pk,Math.abs(v)); const buf=ED.buf;
-    if(!buf.length){ toast('音檔不能是空的'); return; }
-    it.audio=encodeWav(buf,ED.rate); it.mime='audio/wav'; it.ext='wav'; it.dur=buf.length/ED.rate; it.t=Date.now();
-    await dbPut(it); $('editDlg').close(); renderAll(); if(it.confirmed!==false) saveToDisk(it); toast('已儲存修改'); };
+    const buf=ED.buf; if(!buf.length){ toast('音檔不能是空的'); return; }
+    if(!ED.undo.length){ toast('沒有做任何修改'); $('editDlg').close(); return; }
+    const wav=encodeWav(buf,ED.rate), dur=buf.length/ED.rate;
+    if(it.pend){ it.pend={audio:wav,dur}; $('editDlg').close(); renderAll(); toast('已修改這個新錄音（還沒存檔，請聽過按「確認」）',3500); return; }
+    if(it.savedPath && !confirm(`要用修改後的聲音，覆蓋電腦裡的「${it.savedPath}」嗎？\n\n舊的檔案會被取代，無法復原。`)) return;
+    it.audio=wav; it.mime='audio/wav'; it.ext='wav'; it.dur=dur; it.modified=Date.now();
+    if(dirReady()){ const ok=await saveToDisk(it,true,{write:true}); if(ok) addLog('編輯音檔',it); else toast('⚠️ 沒能存進資料夾'); }
+    else await dbPut(it);
+    $('editDlg').close(); renderAll(); toast('已儲存修改'); };
   $('editBtn').onclick=()=>openEdit(cur());
 })();
 
 /* ===================== 匯出 ===================== */
 function renderPreview(){
   const fo=$('optFolder').value, ug=$('optGroup').checked, nm=$('optName').value;
-  const rec=items.filter(x=>x.audio);
+  const rec=items.filter(hasRec);
   if(!rec.length){ $('preview').textContent='（還沒有錄好的音檔）'; $('zipBtn').disabled=true; $('packBtn').disabled=true; return; }
   $('zipBtn').disabled=false; $('packBtn').disabled=false;
   const tree={};
@@ -1094,8 +1351,8 @@ function csvCell(s){ s=String(s??''); return /[",\n]/.test(s)?'"'+s.replace(/"/g
 function stamp(){ const d=new Date(), p=n=>String(n).padStart(2,'0'); return `${d.getFullYear()}${p(d.getMonth()+1)}${p(d.getDate())}_${p(d.getHours())}${p(d.getMinutes())}`; }
 async function exportZip(){
   const fo=$('optFolder').value, ug=$('optGroup').checked, nm=$('optName').value;
-  const rec=sortItems(items.filter(x=>x.audio));
-  if(!rec.length) return;
+  let rec=sortItems(items.filter(hasRec)); if(!rec.length) return;
+  await loadAllAudio(rec); rec=rec.filter(x=>x.audio); if(!rec.length) return;
   const enc=new TextEncoder(); const files=[]; const used=new Set();
   const rows=[['語詞','注音','要教的符號','分組','資料夾','檔名','秒數'].join(',')];
   for(const it of rec){
@@ -1104,7 +1361,7 @@ async function exportZip(){
     while(used.has(path)){ path=(f?f+'/':'')+base+`(${k++}).`+ext; }
     used.add(path);
     files.push({name:path, data:new Uint8Array(it.audio)});
-    rows.push([it.word,it.zy,it.target||'',it.group||'',f,path,it.dur.toFixed(2)].map(csvCell).join(','));
+    rows.push([it.word,it.zy,it.target||'',it.group||'',f,path,(it.dur||0).toFixed(2)].map(csvCell).join(','));
   }
   files.push({name:'清單.csv', data:enc.encode('﻿'+rows.join('\r\n'))});
   files.push({name:'voice-pack.json', data:enc.encode(JSON.stringify(buildPack(rec)))});
@@ -1116,7 +1373,7 @@ async function exportZip(){
   toast(`已下載 ${rec.length} 個音檔`);
 }
 async function exportPack(){
-  const rec=items.filter(x=>x.audio);
+  const rec0=items.filter(hasRec); await loadAllAudio(rec0); const rec=rec0.filter(x=>x.audio);
   const pack=buildPack(rec);
   downloadBlob(new Blob([JSON.stringify(pack)],{type:'application/json'}),'voice-pack.json');
   toast(`語音包共 ${Object.keys(pack.audio).length} 段`);
@@ -1247,6 +1504,7 @@ async function importFiles(fileList){
     }catch(e){ console.error(e); showBanner('⚠️ 「'+esc(name)+'」匯入失敗：'+esc(e.message||e),'err'); }
   }
   if(!curId && items.length) curId=seqList()[0].id;
+  if(dirReady() && $('optAutoSave').checked){ const loc=items.filter(x=>x.src!=='disk'&&x.audio&&!x.pend); for(const it of loc){ if(await saveToDisk(it,true,{write:true,reclass:true,rename:true})) addLog('匯入並存入資料夾',it); } }
   renderAll();
   toast(`匯入完成：新增 ${add} 個、更新 ${upd} 個`,3000);
 }
@@ -1255,30 +1513,32 @@ $('importFile').onchange=e=>{ const f=[...e.target.files]; e.target.value=''; if
 document.addEventListener('dragover',e=>{ e.preventDefault(); });
 document.addEventListener('drop',e=>{ e.preventDefault(); const f=[...(e.dataTransfer?.files||[])]; if(f.length) importFiles(f); });
 $('clearBtn').onclick=async()=>{
-  if(!items.length) return;
-  const n=items.filter(x=>x.audio).length;
-  if(!confirm(`確定要清空全部 ${items.length} 個語詞${n?`和 ${n} 個錄音`:''}嗎？\n（建議先按「下載全部」備份）`)) return;
-  if(n && !confirm('真的要刪除嗎？刪除後無法復原。')) return;
-  items=[]; curId=null; await dbClear(); renderAll(); toast('已清空');
+  const loc=items.filter(x=>x.src!=='disk'); if(!loc.length){ toast('瀏覽器裡沒有暫存的東西'); return; }
+  if(!confirm(`要清掉瀏覽器裡暫存的 ${loc.length} 個語詞／錄音嗎？\n\n（這不會刪除資料夾裡的檔案；但還沒存進資料夾的錄音會不見）`)) return;
+  items=items.filter(x=>x.src==='disk'); curId=null; await dbClear(); renderAll(); toast('已清空瀏覽器暫存');
 };
 $('helpBtn').onclick=()=>$('helpDlg').showModal();
 
 /* ===================== 啟動 ===================== */
 (async function init(){
   $('optFolder').value=kvGet('folder','target'); $('optName').value=kvGet('nameMode','word'); $('optGroup').checked=kvGet('useGroup',false);
-  ['optTrim','optAutoplay','optAutoNext'].forEach(id=>{ $(id).checked=kvGet(id,$(id).checked); $(id).addEventListener('change',()=>kvSet(id,$(id).checked)); });
+  ['optTrim','optAutoplay'].forEach(id=>{ $(id).checked=kvGet(id,$(id).checked); $(id).addEventListener('change',()=>kvSet(id,$(id).checked)); });
+  $('optFree').checked=true;   // 預設自由錄音
+  $('rootPath').value=kvGet('rootPath','');
   await openDB();
-  $('optFree').checked=kvGet('optFree',false); $('optFree').addEventListener('change',()=>kvSet('optFree',$('optFree').checked)); $('optAutoSave').checked=kvGet('optAutoSave',true);
+  $('optAutoSave').checked=kvGet('optAutoSave',true);
   if(FS_OK){ try{ dirHandle=await idbKvGet('dir')||null; if(dirHandle){ dirOK=(await dirHandle.queryPermission({mode:'readwrite'}))==='granted'; } }catch(e){ dirHandle=null; } }
   updateDiskUI();
   if(db){ try{ items=(await dbAll())||[]; }catch(e){ items=[]; } }
+  items.forEach(x=>{ if(!x.src) x.src='local'; });
   if(memMode) showBanner('⚠️ 這個瀏覽器不能自動儲存（可能開了「無痕模式」）。錄好的音檔關掉頁面就會不見，請記得按「下載全部」。','err');
   try{ if(navigator.storage&&navigator.storage.persist) navigator.storage.persist(); }catch(e){}
   if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia) micError(new Error('NOAPI'));
-  const seq=seqList(); curId=(seq.find(x=>!x.audio)||seq[0]||{}).id||null;
+  const seq=seqList(); curId=(seq.find(x=>!hasRec(x))||seq[0]||{}).id||null;
   renderAll();
-  if(!items.length && !kvGet('seenHelp',false)){ kvSet('seenHelp',true); $('helpDlg').showModal(); }
-  window.addEventListener('beforeunload',e=>{ if(recording){ e.preventDefault(); e.returnValue=''; } });
+  if(dirHandle&&dirOK) await scanFolder(false);
+  if(!items.length && !dirHandle && !kvGet('seenHelp',false)){ kvSet('seenHelp',true); $('helpDlg').showModal(); }
+  window.addEventListener('beforeunload',e=>{ if(recording||items.some(x=>x.pend)){ e.preventDefault(); e.returnValue=''; } });
 })();
 </script>
 </body>
