@@ -141,6 +141,17 @@ details[open]>summary::before{content:'▾ '}
 }
 .exportGrid>*{min-width:0} .exportGrid span{white-space:nowrap} .exportGrid select,.exportGrid input{max-width:100%;width:100%}
 #recBtn #recLabel{display:block;line-height:1.15}
+#dupDlg{max-width:760px}
+.dupCols{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:10px 0}
+.dupCard{border:3px solid var(--line);border-radius:14px;padding:10px 12px;text-align:center}
+.dupCard.old{border-color:#3a78c2;background:#eef5fd}
+.dupCard.new{border-color:#2e9b57;background:#eefaf2}
+.dupCard .tag{display:inline-block;color:#fff;border-radius:8px;padding:2px 12px;font-weight:700;font-size:18px}
+.dupCard.old .tag{background:#3a78c2}.dupCard.new .tag{background:#2e9b57}
+.dupCard button{margin-top:8px;font-size:18px;padding:8px 16px}
+.dupAct{display:flex;flex-direction:column;gap:8px;margin-top:8px}
+.dupAct button{text-align:left;padding:10px 14px}
+@media(max-width:560px){.dupCols{grid-template-columns:1fr}}
 #toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#333;color:#fff;padding:10px 18px;border-radius:12px;opacity:0;transition:opacity .2s;pointer-events:none;z-index:50;font-size:16px;max-width:90vw;text-align:center}
 #toast.show{opacity:1}
 .danger{color:var(--main2)}
@@ -379,6 +390,23 @@ details[open]>summary::before{content:'▾ '}
   <div class="dlg"><h2 style="margin-top:0">📜 生檔日誌</h2><div class="hint">新增、重錄、編輯、改名、移動、複製、刪除都會記在這裡，也會同步存成資料夾裡的「生檔日誌.csv」。</div><div id="logBody"></div></div>
   <div class="dlgFoot"><button id="logCsv">下載 CSV</button> <button class="primary" onclick="document.getElementById('logDlg').close()">關閉</button></div>
 </dialog>
+<dialog id="dupDlg">
+  <div class="dlg">
+    <h2 style="margin-top:0">⚠️ 已經有「<span id="dupWord"></span>」的音檔了</h2>
+    <div class="hint">先聽聽看兩個有什麼不同，再決定怎麼處理。<b>不會</b>在您沒選擇之前就蓋掉舊檔。</div>
+    <div class="dupCols">
+      <div class="dupCard old"><span class="tag">舊的</span><div id="dupOldInfo" class="hint"></div><button id="dupPlayOld" class="blue">▶ 聽舊的</button></div>
+      <div class="dupCard new"><span class="tag">新的</span><div id="dupNewInfo" class="hint"></div><button id="dupPlayNew" class="green">▶ 聽新的</button></div>
+    </div>
+    <div class="row" style="justify-content:center"><button id="dupBoth">🔁 輪流播放（先舊的，再新的）</button></div>
+    <div class="dupAct">
+      <button id="dupReplace" class="primary">用「新的」取代「舊的」（舊檔會被覆蓋，無法復原）</button>
+      <button id="dupKeep">兩個都留（新的另存成「語詞(2)」）</button>
+      <button id="dupDiscard">不要新的（丟掉剛錄的，舊檔不動）</button>
+      <button id="dupBack">先不處理（回去繼續修改）</button>
+    </div>
+  </div>
+</dialog>
 <div id="toast"></div>
 
 <script>
@@ -604,7 +632,8 @@ function renderCur(){
     const others=(it.alts||[]).filter(a=>a!==it.word);
     if(others.length){ const l=document.createElement('span'); l.style.fontSize='14px'; l.textContent='其他可能：'; cb.appendChild(l);
       others.forEach(a=>{ const b=document.createElement('button'); b.textContent=a; b.onclick=()=>setWord(it,a); cb.appendChild(b); }); cb.appendChild(document.createElement('br')); }
-    const pl=document.createElement('button'); pl.textContent='▶ 再聽一次'; pl.onclick=()=>playItem(it); cb.appendChild(pl);
+    if(redo){ const po=document.createElement('button'); po.textContent='🟦 聽舊的（現有檔案）'; po.onclick=()=>playItem(it,false,true); cb.appendChild(po); }
+    const pl=document.createElement('button'); pl.textContent=redo?'🟩 聽新的（剛錄的）':'▶ 再聽一次'; pl.onclick=()=>playItem(it); cb.appendChild(pl);
     const ok=document.createElement('button'); ok.className='green'; ok.textContent='✔ 確認'+(redo?'並覆蓋舊檔':(dirReady()&&$('optAutoSave').checked?'並存進資料夾':'並儲存'))+'（Enter）'; ok.onclick=()=>nextTodo(); cb.appendChild(ok);
     const no=document.createElement('button'); no.textContent='✖ 不要這個錄音'; no.onclick=()=>discardPend(it); cb.appendChild(no);
   }
@@ -747,16 +776,56 @@ function discardPend(it){
   if(!hasRec(it)&&it.wordAuto){ it.word=''; it.zy=''; it.segs=null; it.wordAuto=false; }
   pruneBlank(); $('recStatus').textContent='已丟掉這個錄音（沒有存）。'; renderAll();
 }
+function findDup(it){
+  if(!it.word&&!it.zy) return null;
+  return items.find(x=>x!==it&&hasRec(x)&&!x.pend&&((it.word&&x.word===it.word)||(!it.word&&!x.word&&x.zy===it.zy))&&(!it.zy||!x.zy||x.zy===it.zy))||null;
+}
+function playBuf(ab,mime){
+  if(curAudio){ curAudio.pause(); URL.revokeObjectURL(curAudio.src); }
+  const a=new Audio(URL.createObjectURL(new Blob([ab],{type:mime||'audio/wav'}))); curAudio=a;
+  return new Promise(res=>{ a.onended=a.onerror=()=>res(); a.play().catch(()=>res()); });
+}
+function askDup(nu,old){
+  return new Promise(async res=>{
+    let oldAb=null; try{ oldAb=await getAudio(old,true); }catch(e){}
+    $('dupWord').textContent=nu.word||nu.zy;
+    const fmt=t=>t?new Date(t).toLocaleString('zh-TW',{hour12:false}):'';
+    $('dupOldInfo').innerHTML=`資料夾裡已有的<br>${old.savedPath?esc(old.savedPath)+'<br>':''}${old.dur?old.dur.toFixed(1)+' 秒　':''}${old.modified?fmt(old.modified):''}`;
+    $('dupNewInfo').innerHTML=`剛錄好、還沒存的<br>${nu.pend?nu.pend.dur.toFixed(1)+' 秒':''}`;
+    let done=false; const fin=v=>{ if(done) return; done=true; if(curAudio) curAudio.pause(); $('dupDlg').close(); res(v); };
+    const pOld=()=>oldAb?playBuf(oldAb,old.mime):Promise.resolve(), pNew=()=>playBuf(nu.pend.audio,'audio/wav');
+    $('dupPlayOld').onclick=pOld; $('dupPlayNew').onclick=pNew;
+    $('dupBoth').onclick=async()=>{ await pOld(); await new Promise(r=>setTimeout(r,500)); await pNew(); };
+    $('dupReplace').onclick=()=>fin('replace'); $('dupKeep').onclick=()=>fin('both'); $('dupDiscard').onclick=()=>fin('discard'); $('dupBack').onclick=()=>fin('back');
+    $('dupDlg').oncancel=e=>{ e.preventDefault(); fin('back'); };
+    $('dupDlg').showModal();
+  });
+}
 async function confirmItem(it,silent){
   if(!it||!it.pend) return true;
   if(!it.word&&!it.zy){ if(!silent){ toast('請先輸入語詞'); $('wordEdit').focus(); } return false; }
   const redo=hasRec(it);
+  let replaced=null;
+  if(!redo){
+    const dup=findDup(it);
+    if(dup){
+      const a=await askDup(it,dup);
+      if(a==='back') return false;
+      if(a==='discard'){ discardPend(it); return false; }
+      if(a==='replace') replaced=dup;
+    }
+  }
+  if(replaced){
+    // 新的接手舊檔的位置，寫入時直接覆蓋；舊項目從清單移除
+    if(replaced.savedPath){ it.savedPath=replaced.savedPath; it.src='disk'; it.target=it.target||replaced.target||''; }
+    items=items.filter(x=>x!==replaced); dbDel(replaced.id);
+  }
   it.audio=it.pend.audio; it.dur=it.pend.dur; it.mime='audio/wav'; it.ext='wav'; it.pend=null; it.alts=[]; it.wordAuto=false; it.listed=true;
   it.modified=Date.now(); it.created=it.created||it.modified; if(redoId===it.id) redoId=null;
   let ok=false;
   if(dirHandle&&FS_OK&&$('optAutoSave').checked){
     ok=await saveToDisk(it,true,{write:true,rename:true});
-    if(ok) addLog(redo?'重錄並覆蓋':'新增錄音',it); else toast('⚠️ 沒能存進資料夾，先暫存在瀏覽器；請到 ④ 重新允許存取');
+    if(ok) addLog(redo?'重錄並覆蓋':(replaced?'新的取代舊的（重複）':'新增錄音'),it,replaced?'已確認覆蓋舊檔':''); else toast('⚠️ 沒能存進資料夾，先暫存在瀏覽器；請到 ④ 重新允許存取');
   }
   if(!ok){ it.src=it.src==='disk'?'disk':'local'; if(it.src!=='disk') await dbPut(it); }
   renderAll(); return true;
@@ -955,7 +1024,7 @@ $('addBtn').onclick=addWords;
 $('wordsIn').addEventListener('keydown',e=>{ if(e.key==='Enter' && (e.ctrlKey||e.metaKey)){ e.preventDefault(); addWords(); } });
 document.addEventListener('keydown',e=>{
   const tag=(e.target.tagName||'').toLowerCase();
-  if(tag==='textarea'||tag==='input'||tag==='select'||$('helpDlg').open||$('editDlg').open||$('infoDlg').open||$('logDlg').open) return;
+  if(tag==='textarea'||tag==='input'||tag==='select'||$('helpDlg').open||$('editDlg').open||$('infoDlg').open||$('logDlg').open||$('dupDlg').open) return;
   if(e.isComposing) return;
   if(e.code==='Space'){ e.preventDefault(); if(!e.repeat) $('recBtn').click(); }
   else if(e.key==='Enter'){ e.preventDefault(); nextTodo(); }
